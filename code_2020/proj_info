@@ -1,0 +1,19 @@
+GEOGCS["WGS 84",
+    DATUM["WGS_1984",
+        SPHEROID["WGS 84",6378137,298.257223563,
+            AUTHORITY["EPSG","7030"]],
+        AUTHORITY["EPSG","6326"]],
+    PRIMEM["Greenwich",0],
+    UNIT["degree",0.0174532925199433],
+    AUTHORITY["EPSG","4326"]],
+
+GEOGCS["WGS 84",
+    DATUM["Not_specified_based_on_WGS_84_ellipsoid",
+        SPHEROID["WGS 84",6378137,298.257223563,
+            AUTHORITY["EPSG","7030"]],
+        AUTHORITY["EPSG","6030"]],
+    PRIMEM["Greenwich",0],
+    UNIT["degree",0.0174532925199433],
+    AUTHORITY["EPSG","4326"]]
+
+(95.82047823965507, 0.01, 0.0, 47.917385773452565, 0.0, -0.01)
