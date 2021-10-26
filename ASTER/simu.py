@@ -31,7 +31,7 @@ file_MOD09_SZA = "data/MODIS/MOD09GA.SolarZenith_1.tif"
 file_MOD09_SAA = "data/MODIS/MOD09GA.SolarAzimuth_1.tif"
 file_MOD09_VZA = "data/MODIS/MOD09GA.SensorZenith_1.tif"
 # MOD15
-file_MOD15 = "data/MODIS/MOD15A2H.A2019233.h26v04.061.2020306190208.hdf"
+file_MOD15 = "data/MODIS/LAI_2019233h26v4.Lai_500m.tif"
 # MCD43A1
 file_MCD43A1_B1_1 = "data/MODIS/MCD43A1.BRDF_Albedo_Parameters_Band1.Num_Parameters_01.tif"
 file_MCD43A1_B1_2 = "data/MODIS/MCD43A1.BRDF_Albedo_Parameters_Band1.Num_Parameters_02.tif"
@@ -41,7 +41,7 @@ file_MCD43A1_B2_2 = "data/MODIS/MCD43A1.BRDF_Albedo_Parameters_Band2.Num_Paramet
 file_MCD43A1_B2_3 = "data/MODIS/MCD43A1.BRDF_Albedo_Parameters_Band2.Num_Parameters_03.tif"
 # 聚集指数
 # DOY233即233-240
-file_CI = "data/CI_China_8day500m_2019_129-249/MODIS_Clumping_Index_A2019233_500m_Eight_Day_Composite_V001clip.tif"
+file_CI = "data/CI/CI_2019233.tif"
 # 查找表
 file_LUT = "LUT.txt"
 # 判断植被/土壤的NDVI阈值
@@ -972,8 +972,7 @@ def main_hdf():
 
     # MODIS
     # MODIS的hdf中有坐标信息，因此用到metadata
-    sds_LAI, metadata = open_gdal(file_MOD15)
-    LAI = sds_LAI[1].ReadAsArray() * 0.01
+    ds_LAI, LAI = open_tiff(file_MOD15)
 
     # CI
     ds_CI, CI = open_tiff(file_CI)
@@ -981,30 +980,27 @@ def main_hdf():
     # </editor-fold>
 
     # <editor-fold> 预处理：scale，裁剪等
-    # MODIS
     # 获取ASTER数据外包矩形的坐标
     minLat_ASTER = np.min(lat_aster)
     maxLat_ASTER = np.max(lat_aster)
     minLon_ASTER = np.min(lon_aster)
     maxLon_ASTER = np.max(lon_aster)
     print(minLat_ASTER, minLon_ASTER, maxLat_ASTER, maxLon_ASTER)
+
+    # MODIS
     # 计算对应的MODIS横纵坐标范围
-    # base为左上角点的坐标，inter为每一像元坐标
-    # print(metadata.keys())
-    base_lon = float(metadata['WESTBOUNDINGCOORDINATE'])
-    base_lat = float(metadata['NORTHBOUNDINGCOORDINATE'])
-    max_lon = float(metadata['EASTBOUNDINGCOORDINATE'])
-    max_lat = float(metadata['SOUTHBOUNDINGCOORDINATE'])
-    inter_lon = (max_lon - base_lon) / 2400
-    inter_lat = (max_lat - base_lat) / 2400
-    print(base_lon, base_lat,max_lon, max_lat, inter_lon, inter_lat)
+    # base为左上角点的坐标，inter为像元分辨率
+    geotrans = ds_LAI.GetGeoTransform()
+    base_lon = geotrans[0]
+    base_lat = geotrans[3]
+    inter_lon = geotrans[1]
+    inter_lat = geotrans[5]
     min_x = cal_index(base_lon, inter_lon, minLon_ASTER)
     max_x = cal_index(base_lon, inter_lon, maxLon_ASTER)
     min_y = cal_index(base_lat, inter_lat, maxLat_ASTER)  # 这里由于索引大对应纬度小，进行调换
     max_y = cal_index(base_lat, inter_lat, minLat_ASTER)
     print(min_x, max_x, min_y, max_y)
     # 进而对MODIS数据进行裁剪
-    print(LAI.shape)
     LAI = LAI[min_y - 1:max_y + 1, min_x - 1:max_x + 1]
     print(LAI.shape)
     write_tiff(LAI, "LAI")
@@ -1013,6 +1009,7 @@ def main_hdf():
     # 计算对应的CI横纵坐标范围
     geotrans = ds_CI.GetGeoTransform()
     print(geotrans)
+    # CI的坐标单位为m
     base_lon = geotrans[0]
     base_lat = geotrans[3]
     inter_lon = geotrans[1]
@@ -1267,13 +1264,11 @@ def main_space():
 def test():
     ds, CI = open_tiff(file_CI)
     print(ds.GetGeoTransform())
-    sds_LAI, metadata = open_gdal(file_MOD15)
-    base_lon = float(metadata['WESTBOUNDINGCOORDINATE'])
-    base_lat = float(metadata['NORTHBOUNDINGCOORDINATE'])
-    inter_lon = (float(metadata['EASTBOUNDINGCOORDINATE']) - base_lon) / 2400
-    inter_lat = (float(metadata['SOUTHBOUNDINGCOORDINATE']) - base_lon) / 2400
-    print(base_lon, base_lat, inter_lat, inter_lon)
-
+    print(help(ds))
+    print(ds.GetProjection())
+    # GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],
+    # AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],
+    # AXIS["Latitude",NORTH],AXIS["Longitude",EAST],AUTHORITY["EPSG","4326"]]
 
 def sensitivity_overall():
     """
@@ -1346,9 +1341,9 @@ def sensitivity_VZA():
 
 
 if __name__ == '__main__':
-    # test()
+    test()
     # cal_mean_LSTvs()
-    main_hdf()
+    # main_hdf()
     # main_space()
     # display_LUT()
     # sensitivity_VZA()
