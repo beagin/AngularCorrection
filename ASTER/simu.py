@@ -22,15 +22,16 @@ file_LST_ASTER_tiff = "data/ASTER/AST_08_00309042019034740_20210822003637_24184.
 # 0828
 # file_LST_ASTER_hdf = "data/ASTER/AST_08_00308282019034132_20210825125717_3112.hdf"
 # file_refl_ASTER = "data/ASTER/AST_07_00308282019034132_20210825125751_31909.hdf"
-file_LST_ASTER_hdf = "data/ASTER/AST_08_00308282019034141_20210825125717_3109.hdf"
-file_refl_ASTER = "data/ASTER/AST_07_00308282019034141_20210825125751_31906.hdf"
+file_LST_ASTER_hdf = "data/ASTER/AST_08_00308252019030844_20211025205749_4200.hdf"
+file_refl_ASTER = "data/ASTER/AST_07_00308252019030844_20211025201358_16022.hdf"
 # MOD09
 file_MOD09_1 = "data/MODIS/MOD09GA.sur_refl_b01_1.tif"
 file_MOD09_2 = "data/MODIS/MOD09GA.sur_refl_b02_1.tif"
 file_MOD09_SZA = "data/MODIS/MOD09GA.SolarZenith_1.tif"
 file_MOD09_SAA = "data/MODIS/MOD09GA.SolarAzimuth_1.tif"
 file_MOD09_VZA = "data/MODIS/MOD09GA.SensorZenith_1.tif"
-# file_MOD09_VAA = "data/MODIS/MOD09GA.SensorAzimuth_1.tif"
+# MOD15
+file_MOD15 = "data/MODIS/MOD15A2H.A2019233.h26v04.061.2020306190208.hdf"
 # MCD43A1
 file_MCD43A1_B1_1 = "data/MODIS/MCD43A1.BRDF_Albedo_Parameters_Band1.Num_Parameters_01.tif"
 file_MCD43A1_B1_2 = "data/MODIS/MCD43A1.BRDF_Albedo_Parameters_Band1.Num_Parameters_02.tif"
@@ -38,6 +39,9 @@ file_MCD43A1_B1_3 = "data/MODIS/MCD43A1.BRDF_Albedo_Parameters_Band1.Num_Paramet
 file_MCD43A1_B2_1 = "data/MODIS/MCD43A1.BRDF_Albedo_Parameters_Band2.Num_Parameters_01.tif"
 file_MCD43A1_B2_2 = "data/MODIS/MCD43A1.BRDF_Albedo_Parameters_Band2.Num_Parameters_02.tif"
 file_MCD43A1_B2_3 = "data/MODIS/MCD43A1.BRDF_Albedo_Parameters_Band2.Num_Parameters_03.tif"
+# 聚集指数
+# DOY233即233-240
+file_CI = "data/CI_China_8day500m_2019_129-249/MODIS_Clumping_Index_A2019233_500m_Eight_Day_Composite_V001clip.tif"
 # 查找表
 file_LUT = "LUT.txt"
 # 判断植被/土壤的NDVI阈值
@@ -90,18 +94,20 @@ def open_gdal(fileName):
     # subDataset
     subdatasets = hdf.GetSubDatasets()
     for subDataset in subdatasets:
-        # print(subDataset)
-        pass
-
+        print(subDataset)
+    # 查看元数据
+    metadata = hdf.GetMetadata()
+    # print(metadata)
+    # print(metadata.keys())
     # SDSs
     sdsdict = hdf.GetMetadata('SUBDATASETS')
     sdslist = [sdsdict[k] for k in sdsdict.keys() if '_NAME' in k]
     sds = []
     for n in sdslist:
         sds.append(gdal.Open(n))
-    print(len(sds))
+    # print(len(sds))
 
-    return sds
+    return sds, metadata
 
 
 def get_LUT(fileName):
@@ -176,6 +182,18 @@ def cal_fvc(ndvi, NDVIv=0.86, NDVIs=0.156):
     return fvc
 
 
+def cal_fvc_gap(LAI, omega, theta, G=0.5):
+    """
+    根据间隙率模型计算FVC，默认G为0.5，其他各变量都为相同大小的数组，返回结果也为一个数组
+    :param LAI:
+    :param omega:
+    :param theta: 度数，需转换为角度
+    :param G:
+    :return:
+    """
+    return 1-np.exp(LAI * omega * G / np.cos(theta*math.pi/180))
+
+
 def cal_ref_BRDF(SZA, VZA, iso, vol, geo):
     """
     根据BRDF模型计算一个波段的反射率
@@ -245,10 +263,10 @@ def cal_mean_LSTvs():
     计算ASTER图像中所有植被/土壤像元的LST均值
     :return:
     """
-    sds_aster = open_gdal(file_LST_ASTER_hdf)
+    sds_aster, _ = open_gdal(file_LST_ASTER_hdf)
     lst_aster = sds_aster[3].ReadAsArray() * 0.1
     lst_aster[lst_aster < 250] = 250
-    sds_ref_aster = open_gdal(file_refl_ASTER)
+    sds_ref_aster, _ = open_gdal(file_refl_ASTER)
     ref_red_aster = sds_ref_aster[1].ReadAsArray() * 0.001
     ref_nir_aster = sds_ref_aster[2].ReadAsArray() * 0.001
     # 遍历所有像元计算
@@ -926,9 +944,9 @@ def display_LUT():
 def main_hdf():
     """
     simulation experiment of angular normalization
-    打开MODIS、ASDTER文件
-	    从MODIS数据获取fvc（1km，垂直与原始角度）
-    根据位置匹配两种数据
+    打开MODIS、ASTER、CI文件
+	    从MODIS数据获取LAI（500m）
+    根据位置匹配三种数据
     对ASTER每个像元分类（30m，veg/soil）
     根据分类结果计算MODIS像元内的平均Ts，Tv
     根据平均Ts、Tv及fvc计算B(T)模拟值（1km，原始角度）
@@ -939,7 +957,7 @@ def main_hdf():
     # <editor-fold> 打开ASTER与MODIS相应文件，获取数据
     # ASTER
     # 温度
-    sds_aster = open_gdal(file_LST_ASTER_hdf)
+    sds_aster, _ = open_gdal(file_LST_ASTER_hdf)
     lst_aster = sds_aster[3].ReadAsArray() * 0.1
     lst_aster[lst_aster < 250] = 250
     # display(lst_aster, "LST_ASTER")
@@ -947,33 +965,54 @@ def main_hdf():
     # display(lat_aster, "Lat_ASTER")
     # display(lon_aster, "Lon_ASTER")
     # 反射率（red, nir）
-    sds_ref_aster = open_gdal(file_refl_ASTER)
+    sds_ref_aster, _ = open_gdal(file_refl_ASTER)
     ref_vis_aster = sds_ref_aster[0].ReadAsArray() * 0.001
     ref_red_aster = sds_ref_aster[1].ReadAsArray() * 0.001
     ref_nir_aster = sds_ref_aster[2].ReadAsArray() * 0.001
 
     # MODIS
-    ds_ref_1, ref_1 = open_tiff(file_MOD09_1)
-    ds_ref_2, ref_2 = open_tiff(file_MOD09_2)
-    ds_SZA, SZA = open_tiff(file_MOD09_SZA)
-    ds_VZA, VZA = open_tiff(file_MOD09_VZA)
-    ds_brdf_B1_1, brdf_B1_1 = open_tiff(file_MCD43A1_B1_1)
-    ds_brdf_B1_2, brdf_B1_2 = open_tiff(file_MCD43A1_B1_2)
-    ds_brdf_B1_3, brdf_B1_3 = open_tiff(file_MCD43A1_B1_3)
-    ds_brdf_B2_1, brdf_B2_1 = open_tiff(file_MCD43A1_B2_1)
-    ds_brdf_B2_2, brdf_B2_2 = open_tiff(file_MCD43A1_B2_2)
-    ds_brdf_B2_3, brdf_B2_3 = open_tiff(file_MCD43A1_B2_3)
+    # MODIS的hdf中有坐标信息，因此用到metadata
+    sds_LAI, metadata = open_gdal(file_MOD15)
+    LAI = sds_LAI[1].ReadAsArray() * 0.01
+
+    # CI
+    ds_CI, CI = open_tiff(file_CI)
+
     # </editor-fold>
 
     # <editor-fold> 预处理：scale，裁剪等
+    # MODIS
     # 获取ASTER数据外包矩形的坐标
     minLat_ASTER = np.min(lat_aster)
     maxLat_ASTER = np.max(lat_aster)
     minLon_ASTER = np.min(lon_aster)
     maxLon_ASTER = np.max(lon_aster)
-    # print(minLat_ASTER, minLon_ASTER, maxLat_ASTER, maxLon_ASTER)
+    print(minLat_ASTER, minLon_ASTER, maxLat_ASTER, maxLon_ASTER)
     # 计算对应的MODIS横纵坐标范围
-    geotrans = ds_ref_1.GetGeoTransform()  # 获取地理范围信息
+    # base为左上角点的坐标，inter为每一像元坐标
+    # print(metadata.keys())
+    base_lon = float(metadata['WESTBOUNDINGCOORDINATE'])
+    base_lat = float(metadata['NORTHBOUNDINGCOORDINATE'])
+    max_lon = float(metadata['EASTBOUNDINGCOORDINATE'])
+    max_lat = float(metadata['SOUTHBOUNDINGCOORDINATE'])
+    inter_lon = (max_lon - base_lon) / 2400
+    inter_lat = (max_lat - base_lat) / 2400
+    print(base_lon, base_lat,max_lon, max_lat, inter_lon, inter_lat)
+    min_x = cal_index(base_lon, inter_lon, minLon_ASTER)
+    max_x = cal_index(base_lon, inter_lon, maxLon_ASTER)
+    min_y = cal_index(base_lat, inter_lat, maxLat_ASTER)  # 这里由于索引大对应纬度小，进行调换
+    max_y = cal_index(base_lat, inter_lat, minLat_ASTER)
+    print(min_x, max_x, min_y, max_y)
+    # 进而对MODIS数据进行裁剪
+    print(LAI.shape)
+    LAI = LAI[min_y - 1:max_y + 1, min_x - 1:max_x + 1]
+    print(LAI.shape)
+    write_tiff(LAI, "LAI")
+
+    # CI
+    # 计算对应的CI横纵坐标范围
+    geotrans = ds_CI.GetGeoTransform()
+    print(geotrans)
     base_lon = geotrans[0]
     base_lat = geotrans[3]
     inter_lon = geotrans[1]
@@ -982,24 +1021,18 @@ def main_hdf():
     max_x = cal_index(base_lon, inter_lon, maxLon_ASTER)
     min_y = cal_index(base_lat, inter_lat, maxLat_ASTER)  # 这里由于索引大对应纬度小，进行调换
     max_y = cal_index(base_lat, inter_lat, minLat_ASTER)
-    # print(min_x, max_x, min_y, max_y)
-    # 进而对MODIS数据进行裁剪
-    ref_1 = ref_1[min_y - 1:max_y + 1, min_x - 1:max_x + 1] * 0.0001
-    ref_2 = ref_2[min_y - 1:max_y + 1, min_x - 1:max_x + 1] * 0.0001
-    SZA = SZA[min_y - 1:max_y + 1, min_x - 1:max_x + 1] * 0.01
-    VZA = VZA[min_y - 1:max_y + 1, min_x - 1:max_x + 1] * 0.01
-    brdf_B1_1 = brdf_B1_1[min_y - 1:max_y + 1, min_x - 1:max_x + 1] * 0.001
-    brdf_B1_2 = brdf_B1_2[min_y - 1:max_y + 1, min_x - 1:max_x + 1] * 0.001
-    brdf_B1_3 = brdf_B1_3[min_y - 1:max_y + 1, min_x - 1:max_x + 1] * 0.001
-    brdf_B2_1 = brdf_B2_1[min_y - 1:max_y + 1, min_x - 1:max_x + 1] * 0.001
-    brdf_B2_2 = brdf_B2_2[min_y - 1:max_y + 1, min_x - 1:max_x + 1] * 0.001
-    brdf_B2_3 = brdf_B2_3[min_y - 1:max_y + 1, min_x - 1:max_x + 1] * 0.001
-    write_tiff(ref_1, "ref_red_MODIS")
-    write_tiff(ref_2, "ref_nir_MODIS")
-    write_tiff(VZA, "VZA")
+    print(min_x, max_x, min_y, max_y)
+    # 进而对CI数据进行裁剪
+    CI = CI[min_y - 1:max_y + 1, min_x - 1:max_x + 1] * 0.001
+    print(CI.shape)
+    write_tiff(CI, "CI")
+
     # </editor-fold>
 
-    # <editor-fold> 根据MODIS数据获取fvc与fvc_0
+    # <editor-fold> 获取fvc_60与fvc_0
+    # 60度
+
+    """
     # 原始方向
     ndvi = cal_NDVI(ref_1, ref_2)   # 获取NDVI
     fvc = cal_fvc(ndvi)             # 获取fvc
@@ -1145,139 +1178,7 @@ def main_hdf():
     # 建立特征空间
     main_space()
     # </editor-fold>
-
-
-# 适用于tiff格式的ASTER温度文件
-def main_tiff():
     """
-    simulation experiment of angular normalization
-    打开MODIS、ASDTER文件
-	    从MODIS数据获取fvc（1km，垂直与原始角度）
-    根据位置匹配两种数据
-    对ASTER每个像元分类（30m，veg/soil）
-    根据分类结果计算MODIS像元内的平均Ts，Tv
-    根据平均Ts、Tv及fvc计算B(T)模拟值（1km，原始角度）
-    根据模拟数据及fvc建立fvc-B(T)空间（1km，原始角度）
-    结合垂直fvc与特征空间计算垂直B(T)
-    :return:
-    """
-    # <editor-fold> 打开ASTER与MODIS相应文件，获取数据
-    # ASTER
-    sds_aster = open_gdal(file_LST_ASTER_tiff)
-    lst_aster = sds_aster[3].ReadAsArray() * 0.1
-    # display(lst_aster, "LST_ASTER")
-    lat_aster, lon_aster = get_aster_lat_lon(sds_aster)
-    # display(lat_aster, "Lat_ASTER")
-    # display(lon_aster, "Lon_ASTER")
-
-    # MODIS
-    ds_ref_1, ref_1 = open_tiff(file_MOD09_1)
-    ds_ref_2, ref_2 = open_tiff(file_MOD09_2)
-    ds_SZA, SZA = open_tiff(file_MOD09_SZA)
-    ds_brdf_B1_1, brdf_B1_1 = open_tiff(file_MCD43A1_B1_1)
-    ds_brdf_B1_2, brdf_B1_2 = open_tiff(file_MCD43A1_B1_2)
-    ds_brdf_B1_3, brdf_B1_3 = open_tiff(file_MCD43A1_B1_3)
-    ds_brdf_B2_1, brdf_B2_1 = open_tiff(file_MCD43A1_B2_1)
-    ds_brdf_B2_2, brdf_B2_2 = open_tiff(file_MCD43A1_B2_2)
-    ds_brdf_B2_3, brdf_B2_3 = open_tiff(file_MCD43A1_B2_3)
-    # </editor-fold>
-
-    # <editor-fold> 预处理：scale，裁剪等
-    # 获取ASTER数据外包矩形的坐标
-    minLat_ASTER = np.min(lat_aster)
-    maxLat_ASTER = np.max(lat_aster)
-    minLon_ASTER = np.min(lon_aster)
-    maxLon_ASTER = np.max(lon_aster)
-    # 计算对应的MODIS横纵坐标范围
-    geotrans = ds_ref_1.GetGeoTransform()  # 获取地理范围信息
-    print(geotrans)
-    base_lon = geotrans[0]
-    base_lat = geotrans[3]
-    inter_lon = geotrans[1]
-    inter_lat = geotrans[5]
-    min_x = cal_index(base_lon, inter_lon, minLon_ASTER)
-    max_x = cal_index(base_lon, inter_lon, maxLon_ASTER)
-    min_y = cal_index(base_lat, inter_lat, maxLat_ASTER)  # 这里由于索引大对应纬度小，进行调换
-    max_y = cal_index(base_lat, inter_lat, minLat_ASTER)
-    print(min_x, max_x, min_y, max_y)
-    # 进而对MODIS数据进行裁剪
-    ref_1 = ref_1[min_y - 1:max_y + 1, min_x - 1:max_x + 1] * 0.0001
-    ref_2 = ref_2[min_y - 1:max_y + 1, min_x - 1:max_x + 1] * 0.0001
-    SZA = SZA[min_y - 1:max_y + 1, min_x - 1:max_x + 1] * 0.01
-    brdf_B1_1 = brdf_B1_1[min_y - 1:max_y + 1, min_x - 1:max_x + 1] * 0.001
-    brdf_B1_2 = brdf_B1_2[min_y - 1:max_y + 1, min_x - 1:max_x + 1] * 0.001
-    brdf_B1_3 = brdf_B1_3[min_y - 1:max_y + 1, min_x - 1:max_x + 1] * 0.001
-    brdf_B2_1 = brdf_B2_1[min_y - 1:max_y + 1, min_x - 1:max_x + 1] * 0.001
-    brdf_B2_2 = brdf_B2_2[min_y - 1:max_y + 1, min_x - 1:max_x + 1] * 0.001
-    brdf_B2_3 = brdf_B2_3[min_y - 1:max_y + 1, min_x - 1:max_x + 1] * 0.001
-    print(ref_1.shape)
-    # </editor-fold>
-
-    # <editor-fold> 根据MODIS数据获取fvc与fvc_0
-    # 原始方向
-    ndvi = cal_NDVI(ref_1, ref_2)   # 获取NDVI
-    fvc = cal_fvc(ndvi)             # 获取fvc
-    # 垂直方向的反射率
-    VZA_0 = np.zeros(ref_1.shape)
-    ref_1_brdf = cal_ref_BRDF(SZA, VZA_0, brdf_B1_1, brdf_B1_2, brdf_B1_3)
-    ref_2_brdf = cal_ref_BRDF(SZA, VZA_0, brdf_B2_1, brdf_B2_2, brdf_B2_3)
-    ref_1_brdf[ref_1_brdf > 1] = 1
-    ref_1_brdf[ref_1_brdf < 0] = 0
-    ref_2_brdf[ref_2_brdf > 1] = 1
-    ref_2_brdf[ref_2_brdf < 0] = 0
-    # 垂直方向的ndvi与fvc
-    ndvi_0 = cal_NDVI(ref_1_brdf, ref_2_brdf)
-    fvc_0 = cal_fvc(ndvi_0)
-    # </editor-fold>
-
-    # <editor-fold> 对一个MODIS像元，计算其对应ASTER像元的平均LSTs, LSTv
-    cur_y_aster = 0
-    for y_modis in range(ref_1.shape[0]):     # 一行
-        cur_x_aster = 0
-        for x_modis in range(ref_1.shape[1]):
-            # 对当前MODIS像元
-            LSTv = []
-            LSTs = []
-            # 当前MODIS像元坐标范围
-            cur_minLon = geotrans[0] + geotrans[1] * (min_x-1+x_modis-0.5)
-            cur_maxLon = geotrans[0] + geotrans[1] * (min_x-1+x_modis+0.5)
-            cur_minLat = geotrans[3] + geotrans[5] * (min_y-1+y_modis+0.5)
-            cur_maxLat = geotrans[3] + geotrans[5] * (min_y-1+y_modis-0.5)
-            # 找到对应的ASTER像元
-            done = False
-            while not done:
-                for y_aster in range(cur_y_aster, lst_aster.shape[1]):
-                    for x_aster in range(cur_x_aster, lst_aster.shape[0]):
-                        # 判断纬度是否在范围内
-                        if cur_minLat <= lat_aster[y_aster, x_aster] <= cur_maxLat:
-                            cur_y_aster = y_aster
-                            # 判断经度是否在范围内
-                            if cur_minLon <= lon_aster[y_aster, x_aster] <= cur_maxLon:
-                                cur_x_aster = x_aster
-                                # 判断当前像元是否植被——像元分类？
-
-                            # 经度不在范围内
-                            else:
-                                # 当前行已经匹配完了
-                                if lon_aster[y_aster, x_aster] > cur_maxLon:
-                                    break
-                                # 当前行还没匹配到
-                                else:
-                                    continue
-                        # 当前行都不在范围内
-                        else:
-                            break
-            pass
-
-    # </editor-fold>
-
-
-    # 建立特征空间，计算模拟的radiance
-    pass
-
-    # 结果对比与分析
-
-    # 出图
 
 
 def main_space():
@@ -1364,11 +1265,14 @@ def main_space():
 
 
 def test():
-    ds, lst = open_tiff(file_LST_ASTER_tiff)
+    ds, CI = open_tiff(file_CI)
     print(ds.GetGeoTransform())
-    ds_modis, refl_modis = open_tiff(file_MOD09_2)
-    print(ds_modis.GetGeoTransform())
-    lst_hdf = open_gdal(file_refl_ASTER)
+    sds_LAI, metadata = open_gdal(file_MOD15)
+    base_lon = float(metadata['WESTBOUNDINGCOORDINATE'])
+    base_lat = float(metadata['NORTHBOUNDINGCOORDINATE'])
+    inter_lon = (float(metadata['EASTBOUNDINGCOORDINATE']) - base_lon) / 2400
+    inter_lat = (float(metadata['SOUTHBOUNDINGCOORDINATE']) - base_lon) / 2400
+    print(base_lon, base_lat, inter_lat, inter_lon)
 
 
 def sensitivity_overall():
@@ -1444,7 +1348,7 @@ def sensitivity_VZA():
 if __name__ == '__main__':
     # test()
     # cal_mean_LSTvs()
-    # main_hdf()
+    main_hdf()
     # main_space()
     # display_LUT()
-    sensitivity_VZA()
+    # sensitivity_VZA()

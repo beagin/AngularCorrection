@@ -1,6 +1,7 @@
 .idea/
 ASTER/data/
 ASTER/pics/
+ASTER/*.pdf
 *.png
 *.jpg
 *.xlsx
