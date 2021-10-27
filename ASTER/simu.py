@@ -153,11 +153,11 @@ def cal_NDVI(data_red, data_nir):
         result[result > 1] = 1
         result[result < 0] = 0
     # check the histogram
-    # hist, edges = np.histogram(result, 100)
-    # print(hist)
-    # print(edges)
-
-    # display(result, "NDVI")
+    #     hist, edges = np.histogram(result, 100)
+    #     print(hist)
+    #     print(edges)
+    #
+    #     display(result, "NDVI")
     return result
 
 
@@ -193,7 +193,7 @@ def cal_fvc_gap(LAI, omega, theta, G=0.5):
     :param G:
     :return:
     """
-    return 1-np.exp(LAI * omega * G / np.cos(theta*math.pi/180))
+    return 1-np.exp(-LAI * omega * G / np.cos(theta*math.pi/180))
 
 
 def cal_ref_BRDF(SZA, VZA, iso, vol, geo):
@@ -271,6 +271,7 @@ def cal_mean_LSTvs():
     sds_ref_aster, _ = open_gdal(file_refl_ASTER)
     ref_red_aster = sds_ref_aster[1].ReadAsArray() * 0.001
     ref_nir_aster = sds_ref_aster[2].ReadAsArray() * 0.001
+    ndvi = cal_NDVI(ref_red_aster, ref_nir_aster)
     # 遍历所有像元计算
     LSTs = []
     LSTv = []
@@ -280,13 +281,23 @@ def cal_mean_LSTvs():
         for x in range(lst_aster.shape[1]):
             # 去除边缘无数据点与云
             if lst_aster[y, x] > 285:
-                ndvi = cal_NDVI(ref_red_aster[y, x], ref_nir_aster[y, x])
-                if ndvi > threshold_NDVI:
+                # 获取对应的6*6个NDVI值，用平均值代替
+                cur_ndvi = np.mean(ndvi[y*6:y*6+5, x*6:x*6+5])
+                # if cur_ndvi > threshold_NDVI:
+                #     num_veg += 1
+                #     LSTv.append(lst_aster[y, x])
+                # else:
+                #     num_soil += 1
+                #     LSTs.append(lst_aster[y, x])
+
+                # 计算更极端的端元温度值
+                if cur_ndvi > 0.66:
                     num_veg += 1
                     LSTv.append(lst_aster[y, x])
-                else:
+                elif cur_ndvi < 0.08:
                     num_soil += 1
                     LSTs.append(lst_aster[y, x])
+
     print(np.mean(LSTs))
     print(np.mean(LSTv))
     print(num_soil)
@@ -1005,9 +1016,9 @@ def main_hdf():
 
     # <editor-fold> 对每个MODIS像元：获取对应的CI值，计算fvc_60与fvc_0；计算其对应ASTER像元的平均LSTs, LSTv，进而计算辐亮度
     # 60度
-    theta_60 = np.ones(LAI.shape) * 60
+    theta_60 = 60
     # 0度
-    theta_0 = np.zeros(LAI.shape)
+    theta_0 = 0
 
     # 计算FVC，G默认为0.5
     FVC_60 = cal_fvc_gap(LAI, CI, theta_60)
@@ -1089,14 +1100,13 @@ def main_hdf():
                     continue
                 # 只是没有土壤像元，给定值
                 else:
-                    LSTs.append(317)
+                    LSTs.append(300)
             # 没有植被像元
             if len(LSTv) == 0:
-                LSTv.append(304)
+                LSTv.append(294)
 
             # 对平均温度进行判断（对水与大部分云的阴影进一步去除）
-            if np.mean(LSTs) <= 300:
-            # if np.mean(LSTs) <= 290:
+            if np.mean(LSTs) <= 288:
                 is_valid[y_modis, x_modis] = False
 
             # 对当前MODIS像元计算辐亮度
@@ -1156,7 +1166,6 @@ def main_space():
     ds_fvc, fvc = open_tiff("pics/FVC.tif")
     ds_fvc_space, fvc_space = open_tiff("pics/FVC_space.tif")
     ds_fvc_0, fvc_0 = open_tiff("pics/FVC_0.tif")
-    ds_VZA, VZA = open_tiff("pics/VZA.tif")
     ds_valid, is_valid = open_tiff("pics/is_valid.tif")
 
     # 生成特征空间
@@ -1193,20 +1202,16 @@ def main_space():
     display_hist(BT_0_space_valid - BT_0_valid, "BT_diff_space_0")
     RMSE_BT_space_0 = np.sqrt(metrics.mean_squared_error(BT_0_valid, BT_0_space_valid))
     print("RMSE_BT_space_0:" + str(RMSE_BT_space_0))
-    # 根据角度划分的折线图
-    calRMSE(BT_0_valid, BT_0_space_valid, VZA, "BT_space_0")
 
     # 原始数据与模拟结果的对比
     display_hist(BT_0_valid - BT_valid, "BT_diff_0")
     RMSE_BT_0 = np.sqrt(metrics.mean_squared_error(BT_valid, BT_0_valid))
     print("RMSE_BT_0:" + str(RMSE_BT_0))
-    calRMSE(BT_valid, BT_0_valid, VZA, "BT_0")
 
     # 原始数据与特征空间结果的对比
     display_hist(BT_0_space_valid - BT_valid, "BT_diff_space")
     RMSE_BT_space = np.sqrt(metrics.mean_squared_error(BT_valid, BT_0_space_valid))
     print("RMSE_BT_space:" + str(RMSE_BT_space))
-    calRMSE(BT_valid, BT_0_space_valid, VZA, "BT_space")
 
     # </editor-fold>
 
@@ -1214,10 +1219,6 @@ def main_space():
     LST = BTs2lst(BT_valid)
     LST_0 = BTs2lst(BT_0_valid)
     LST_space_0 = BTs2lst(BT_0_space_valid)
-
-    calRMSE(LST_0, LST_space_0, VZA, "LST_space_0")
-    calRMSE(LST_0, LST, VZA, "LST_0")
-    calRMSE(LST_space_0, LST, VZA, "LST_space")
 
     # 出图
     write_tiff(BT_0_space_valid, "BT_0_space_valid")
@@ -1228,13 +1229,12 @@ def main_space():
 
 
 def test():
-    ds, CI = open_tiff(file_CI)
-    print(ds.GetGeoTransform())
-    print(help(ds))
-    print(ds.GetProjection())
-    # GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],
-    # AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],
-    # AXIS["Latitude",NORTH],AXIS["Longitude",EAST],AUTHORITY["EPSG","4326"]]
+    a = np.array([[1,2,3],[4,5,6],[7,8,9]])
+    b = np.ones((3,3))
+    fvc0 = cal_fvc_gap(a, b, 60)
+    fvc60 = cal_fvc_gap(a, b, 0)
+    print(fvc0)
+    print(fvc60)
 
 
 def sensitivity_overall():
@@ -1310,8 +1310,8 @@ def sensitivity_VZA():
 if __name__ == '__main__':
     # test()
     # cal_mean_LSTvs()
-    # main_hdf()
+    main_hdf()
     # main_space()
-    cal_mean_LSTvs()
+    # cal_mean_LSTvs()
     # display_LUT()
     # sensitivity_VZA()
