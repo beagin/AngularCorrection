@@ -1007,7 +1007,7 @@ def main_hdf():
     max_y = cal_index(base_lat, inter_lat, minLat_ASTER)
     print(min_x, max_x, min_y, max_y)
     # 进而对MODIS数据进行裁剪
-    LAI = LAI[min_y - 1:max_y + 1, min_x - 1:max_x + 1]
+    LAI = LAI[min_y - 1:max_y + 1, min_x - 1:max_x + 1] * 0.1
     print(LAI.shape)
     write_tiff(LAI, "LAI")
 
@@ -1020,9 +1020,12 @@ def main_hdf():
     # 0度
     theta_0 = 0
 
-    # 计算FVC，G默认为0.5
+    # 计算FVC，G默认为0.5，并导出图像
     FVC_60 = cal_fvc_gap(LAI, CI, theta_60)
     FVC_0 = cal_fvc_gap(LAI, CI, theta_0)
+    write_tiff(FVC_60, "FVC")
+    write_tiff(FVC_0, "FVC_0")
+    print("done FVC calculation")
 
     # 用于存储植被覆盖度与辐亮度的数组
     BT_60 = np.zeros(LAI.shape, dtype=np.float64)
@@ -1141,8 +1144,6 @@ def main_hdf():
     fvc_space = fvc_space.reshape((1, fvc_space.shape[0]))
 
     # 出图
-    write_tiff(FVC_60, "FVC")
-    write_tiff(FVC_0, "FVC_0")
     write_tiff(fvc_space, "FVC_space")
     write_tiff(BT_60, "BT")
     write_tiff(BT_0, "BT_0")
