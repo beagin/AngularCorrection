@@ -474,9 +474,9 @@ def getEdges_fvc(BT: np.ndarray, fvc: np.ndarray):
     print("BT_aver: " + str(LST_aver))
     print("BT_std: " + str(LST_std))
 
-    # divide the NDVI into intervals, 10 * 8 subintervals
-    interval_num = 30
-    subinterval_num = 6
+    # divide the FVC into intervals, 10 * 8 subintervals
+    interval_num = 20
+    subinterval_num = 8
     # do the statics
     Ts = [[[] for j in range(subinterval_num)] for i in range(interval_num)]
     for i in range(BT.shape[0]):
@@ -484,7 +484,7 @@ def getEdges_fvc(BT: np.ndarray, fvc: np.ndarray):
             # 去除异常值
             if fvc[i, j] <= 0 or fvc[i, j] >= 1:
                 continue
-            if BT[i, j] == 0 or BT[i, j] >= LST_aver + 3.25 * LST_std or BT[i, j] <= LST_aver - 2.5 * LST_std:
+            if BT[i, j] == 0 or BT[i, j] >= LST_aver + 4 * LST_std or BT[i, j] <= LST_aver - 4 * LST_std:
                 continue
             index = int(fvc[i, j] * interval_num * subinterval_num)
             Ts[int(index / subinterval_num)][index % subinterval_num].append(BT[i, j])
@@ -498,7 +498,7 @@ def getEdges_fvc(BT: np.ndarray, fvc: np.ndarray):
             # print(dev_all)
             for x in Ts[i][j]:
                 # LST
-                if x > mean_all + 3.25 * dev_all or x < mean_all - 3 * dev_all:
+                if x > mean_all + 4 * dev_all or x < mean_all - 4 * dev_all:
                     continue
                 # LST
                 Ts_[i][j].append(x)
@@ -904,9 +904,9 @@ def scatter_BTs_fvc(BT, fvc, k1, c1, k2, c2):
     plt.legend()
     plt.xlabel("FVC")
     plt.ylabel("Radiance")
-    plt.ylim(6.2, 9)
+    # plt.ylim(6.2, 9)
     # plt.ylim(np.min(BT) - 0.5, np.max(BT) + 0.5)
-    # plt.xlim(0, 3)
+    # plt.xlim(0, 1.2)
     # plt.savefig("fvc_BTs_edges.png")
     plt.savefig("pics/BTs_fvc_edges.png")
     plt.show()
@@ -1170,6 +1170,7 @@ def main_space():
     ds_valid, is_valid = open_tiff("pics/is_valid.tif")
 
     # 生成特征空间
+    k1, c1, k2, c2 = getEdges_fvc(BT_0, fvc_0)
     k1, c1, k2, c2 = getEdges_fvc(BT_space, fvc_space)
     # 出图
     scatter_BTs_fvc(BT_space, fvc_space, k1, c1, k2, c2)
@@ -1311,8 +1312,8 @@ def sensitivity_VZA():
 if __name__ == '__main__':
     # test()
     # cal_mean_LSTvs()
-    main_hdf()
-    # main_space()
+    # main_hdf()
+    main_space()
     # cal_mean_LSTvs()
     # display_LUT()
     # sensitivity_VZA()
