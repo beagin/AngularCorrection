@@ -27,6 +27,7 @@ file_LST_ASTER_hdf = "data/ASTER/AST_08_00308252019030937_20211025205719_32091.h
 # file_LST_ASTER_hdf = "data/ASTER/AST_08_00308252019030844_20211025205749_4200.hdf"
 file_refl_ASTER = "data/ASTER/AST_07_00308252019030937_20211025201308_7969.hdf"
 # file_refl_ASTER = "data/ASTER/AST_07_00308252019030844_20211025201358_16022.hdf"
+file_SE_ASTER = "data/ASTER/AST_05_00308252019030937_20211101075428_23019.hdf"
 # MOD09
 file_MOD09_1 = "data/MODIS/MOD09GA.sur_refl_b01_1.tif"
 file_MOD09_2 = "data/MODIS/MOD09GA.sur_refl_b02_1.tif"
@@ -96,8 +97,8 @@ def open_gdal(fileName):
     hdf = gdal.Open(fileName)
     # subDataset
     subdatasets = hdf.GetSubDatasets()
-    # for subDataset in subdatasets:
-    #     print(subDataset)
+    for subDataset in subdatasets:
+        print(subDataset)
     # 查看元数据
     metadata = hdf.GetMetadata()
     # print(metadata)
@@ -735,6 +736,13 @@ def calRMSE_new(lst: np.ndarray, lst_0: np.ndarray, VZA: np.ndarray, title: str)
     plt.show()
 
 
+def cal_channelSE():
+    """
+    根据波段发射率计算通道发射率
+    :return:
+    """
+
+
 # ****************************************** 其他函数 **************************************
 
 
@@ -1289,12 +1297,13 @@ def main_space():
 
 
 def test():
-    a = np.array([[1,2,3],[4,5,6],[7,8,9]])
-    b = np.ones((3, 3)) * 0.8
-    fvc0 = cal_fvc_gap(a, b, 0)
-    fvc60 = cal_fvc_gap(a, b, 60)
-    print(fvc0)
-    print(fvc60)
+    # a = np.array([[1,2,3],[4,5,6],[7,8,9]])
+    # b = np.ones((3, 3)) * 0.8
+    # fvc0 = cal_fvc_gap(a, b, 0)
+    # fvc60 = cal_fvc_gap(a, b, 60)
+    # print(fvc0)
+    # print(fvc60)
+    sds, _ = open_gdal(file_SE_ASTER)
 
 
 def sensitivity_overall():
@@ -1368,7 +1377,7 @@ def sensitivity_VZA():
 
 
 if __name__ == '__main__':
-    # test()
+    test()
     # cal_mean_LSTvs()
     # main_hdf()
     # main_space()
@@ -1376,4 +1385,4 @@ if __name__ == '__main__':
     # display_LUT()
     # sensitivity_VZA()
     # display_lines_0_60()
-    display_FVCdiff()
+    # display_FVCdiff()
