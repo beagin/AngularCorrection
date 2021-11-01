@@ -950,7 +950,7 @@ def display_lines_0_60():
             else:
                 # plt.annotate("", xy=(FVC_60[i, j], BT_60[i, j]), xytext=(FVC_0[i, j], BT_0[i, j]), )
                 plt.plot((FVC_0[i, j], FVC_60[i, j]), (BT_0[i, j], BT_60[i, j]),
-                    color=(random.randint(0, 200)/256, random.randint(0, 200)/256, random.randint(0, 200)/256), linewidth=0.5, alpha=0.7)
+                    color=(random.randint(0, 200)/256, random.randint(0, 200)/256, random.randint(0, 200)/256), linewidth=0.5, alpha=0.5)
 
     # 坐标轴、标签等
     plt.xlabel("FVC")
@@ -959,6 +959,18 @@ def display_lines_0_60():
     # 存储与显示
     plt.savefig("pics/lines_colorful.png", dpi=500)
     plt.show()
+
+
+def display_FVCdiff():
+    """
+    绘制FVC差值图
+    :return:
+    """
+    _, FVC_60 = open_tiff("pics/FVC.tif")
+    _, FVC_0 = open_tiff("pics/FVC_0.tif")
+    _, is_valid = open_tiff("pics/is_valid.tif")
+    diff = (FVC_60 - FVC_0) * is_valid
+    write_tiff(diff, "FVC_diff")
 
 
 # ****************************************** 综合 ******************************************
@@ -1363,4 +1375,5 @@ if __name__ == '__main__':
     # cal_mean_LSTvs()
     # display_LUT()
     # sensitivity_VZA()
-    display_lines_0_60()
+    # display_lines_0_60()
+    display_FVCdiff()
