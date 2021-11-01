@@ -11,6 +11,7 @@ from PIL import Image
 from osgeo import gdal, gdalconst
 import math
 from code_2020.kernals import Ross_thick, LI_SparseR
+import random
 
 
 # ****************************************** 一些声明 **************************************
@@ -469,34 +470,34 @@ def getEdges_fvc(BT: np.ndarray, fvc: np.ndarray):
     """
     print("func get edges")
     # average and standard deviation of all lsts
-    LST_aver = BT.mean()
-    LST_std = np.std(BT)
-    print("BT_aver: " + str(LST_aver))
-    print("BT_std: " + str(LST_std))
+    BT_aver = BT.mean()
+    BT_std = np.std(BT)
+    print("BT_aver: " + str(BT_aver))
+    print("BT_std: " + str(BT_std))
 
     # divide the FVC into intervals, 10 * 8 subintervals
-    interval_num = 20
+    interval_num = 10
     subinterval_num = 8
     # do the statics
-    Ts = [[[] for j in range(subinterval_num)] for i in range(interval_num)]
+    BTs = [[[] for j in range(subinterval_num)] for i in range(interval_num)]
     for i in range(BT.shape[0]):
         for j in range(BT.shape[1]):
             # 去除异常值
-            if fvc[i, j] <= 0 or fvc[i, j] >= 1:
+            if fvc[i, j] <= 1e-2 or fvc[i, j] >= 1:
                 continue
-            if BT[i, j] == 0 or BT[i, j] >= LST_aver + 4 * LST_std or BT[i, j] <= LST_aver - 4 * LST_std:
+            if BT[i, j] <= 0 or BT[i, j] >= BT_aver + 4 * BT_std or BT[i, j] <= BT_aver - 2.6 * BT_std:
                 continue
             index = int(fvc[i, j] * interval_num * subinterval_num)
-            Ts[int(index / subinterval_num)][index % subinterval_num].append(BT[i, j])
+            BTs[int(index / subinterval_num)][index % subinterval_num].append(BT[i, j])
     # delete those lst below 270
     Ts_  = [[[] for j in range(subinterval_num)] for i in range(interval_num)]
     for i in range(interval_num):
         for j in range(subinterval_num):
-            mean_all = np.mean(Ts[i][j])
-            dev_all = np.std(Ts[i][j], ddof=1)
+            mean_all = np.mean(BTs[i][j])
+            dev_all = np.std(BTs[i][j], ddof=1)
             # print(mean_all)
             # print(dev_all)
-            for x in Ts[i][j]:
+            for x in BTs[i][j]:
                 # LST
                 if x > mean_all + 4 * dev_all or x < mean_all - 4 * dev_all:
                     continue
@@ -904,7 +905,7 @@ def scatter_BTs_fvc(BT, fvc, k1, c1, k2, c2):
     plt.legend()
     plt.xlabel("FVC")
     plt.ylabel("Radiance")
-    # plt.ylim(6.2, 9)
+    plt.ylim(5, 7.5)
     # plt.ylim(np.min(BT) - 0.5, np.max(BT) + 0.5)
     # plt.xlim(0, 1.2)
     # plt.savefig("fvc_BTs_edges.png")
@@ -924,6 +925,41 @@ def display_LUT():
     plt.ylabel("BT")
     plt.plot(list_LST, list_BT)
     plt.savefig("pics/LUT.png")
+
+
+def display_lines_0_60():
+    """
+    在同一特征空间内绘制0度与60数据的连线图
+    :return:
+    """
+    # 读取相关数据
+    _, BT_60 = open_tiff("pics/BT.tif")
+    _, BT_0 = open_tiff("pics/BT_0.tif")
+    _, FVC_60 = open_tiff("pics/FVC.tif")
+    _, FVC_0 = open_tiff("pics/FVC_0.tif")
+    _, is_valid = open_tiff("pics/is_valid.tif")
+
+    # 绘制
+    for i in range(BT_0.shape[0]):
+        for j in range(int(BT_0.shape[1])):
+        # for j in range(int(BT_0.shape[1]/2), BT_0.shape[1]):
+            # 有效性筛选
+            if not is_valid[i, j]:
+                continue
+            # 每个像元绘制0到60的连线
+            else:
+                # plt.annotate("", xy=(FVC_60[i, j], BT_60[i, j]), xytext=(FVC_0[i, j], BT_0[i, j]), )
+                plt.plot((FVC_0[i, j], FVC_60[i, j]), (BT_0[i, j], BT_60[i, j]),
+                    color=(random.randint(0, 200)/256, random.randint(0, 200)/256, random.randint(0, 200)/256), linewidth=0.5, alpha=0.7)
+
+    # 坐标轴、标签等
+    plt.xlabel("FVC")
+    plt.ylabel("BT")
+
+    # 存储与显示
+    plt.savefig("pics/lines_colorful.png", dpi=500)
+    plt.show()
+
 
 # ****************************************** 综合 ******************************************
 
@@ -1169,8 +1205,18 @@ def main_space():
     ds_fvc_0, fvc_0 = open_tiff("pics/FVC_0.tif")
     ds_valid, is_valid = open_tiff("pics/is_valid.tif")
 
-    # 生成特征空间
+    # 直方图验证
+    hist, edges = np.histogram(fvc_space, 100)
+    print(hist)
+    print(edges)
+
+    # 垂直角度的特征空间
+    BT_0 = BT_0 * is_valid
+    fvc_0 = fvc_0 * is_valid
     k1, c1, k2, c2 = getEdges_fvc(BT_0, fvc_0)
+    scatter_BTs_fvc(BT_0, fvc_0, k1, c1, k2, c2)
+
+    # 生成特征空间
     k1, c1, k2, c2 = getEdges_fvc(BT_space, fvc_space)
     # 出图
     scatter_BTs_fvc(BT_space, fvc_space, k1, c1, k2, c2)
@@ -1203,17 +1249,17 @@ def main_space():
     # 计算结果与模拟结果进行对比
     display_hist(BT_0_space_valid - BT_0_valid, "BT_diff_space_0")
     RMSE_BT_space_0 = np.sqrt(metrics.mean_squared_error(BT_0_valid, BT_0_space_valid))
-    print("RMSE_BT_space_0:" + str(RMSE_BT_space_0))
+    print("RMSE_BT_space_0:\t" + str(RMSE_BT_space_0))
 
     # 原始数据与模拟结果的对比
     display_hist(BT_0_valid - BT_valid, "BT_diff_0")
     RMSE_BT_0 = np.sqrt(metrics.mean_squared_error(BT_valid, BT_0_valid))
-    print("RMSE_BT_0:" + str(RMSE_BT_0))
+    print("RMSE_BT_0:\t" + str(RMSE_BT_0))
 
     # 原始数据与特征空间结果的对比
     display_hist(BT_0_space_valid - BT_valid, "BT_diff_space")
     RMSE_BT_space = np.sqrt(metrics.mean_squared_error(BT_valid, BT_0_space_valid))
-    print("RMSE_BT_space:" + str(RMSE_BT_space))
+    print("RMSE_BT_space:\t" + str(RMSE_BT_space))
 
     # </editor-fold>
 
@@ -1232,9 +1278,9 @@ def main_space():
 
 def test():
     a = np.array([[1,2,3],[4,5,6],[7,8,9]])
-    b = np.ones((3,3))
-    fvc0 = cal_fvc_gap(a, b, 60)
-    fvc60 = cal_fvc_gap(a, b, 0)
+    b = np.ones((3, 3)) * 0.8
+    fvc0 = cal_fvc_gap(a, b, 0)
+    fvc60 = cal_fvc_gap(a, b, 60)
     print(fvc0)
     print(fvc60)
 
@@ -1313,7 +1359,8 @@ if __name__ == '__main__':
     # test()
     # cal_mean_LSTvs()
     # main_hdf()
-    main_space()
+    # main_space()
     # cal_mean_LSTvs()
     # display_LUT()
     # sensitivity_VZA()
+    display_lines_0_60()
