@@ -47,7 +47,7 @@ file_MCD43A1_B2_3 = "data/MODIS/MCD43A1.BRDF_Albedo_Parameters_Band2.Num_Paramet
 # DOY233即233-240
 file_CI = "data/CI/CI_6.tif"
 # 查找表
-file_LUT = "LUT.txt"
+file_LUT = "SRF/LUT12.txt"
 # 判断植被/土壤的NDVI阈值
 threshold_NDVI = 0.45
 # ASTER图像区域
@@ -97,8 +97,8 @@ def open_gdal(fileName):
     hdf = gdal.Open(fileName)
     # subDataset
     subdatasets = hdf.GetSubDatasets()
-    for subDataset in subdatasets:
-        print(subDataset)
+    # for subDataset in subdatasets:
+    #     print(subDataset)
     # 查看元数据
     metadata = hdf.GetMetadata()
     # print(metadata)
@@ -139,6 +139,7 @@ def write_tiff(data: np.ndarray, filename: str):
 
 
 # ****************************************** 计算函数 **************************************
+# <editor-fold>
 
 
 def cal_NDVI(data_red, data_nir):
@@ -304,6 +305,75 @@ def cal_mean_LSTvs():
     print(np.mean(LSTv))
     print(num_soil)
     print(num_veg)
+
+
+def cal_mean_SEvs():
+    sds_se_aster, _ = open_gdal(file_SE_ASTER)
+    SE_10 = sds_se_aster[0].ReadAsArray() * 0.001
+    SE_11 = sds_se_aster[1].ReadAsArray() * 0.001
+    SE_12 = sds_se_aster[2].ReadAsArray() * 0.001
+    SE_13 = sds_se_aster[3].ReadAsArray() * 0.001
+    SE_14 = sds_se_aster[4].ReadAsArray() * 0.001
+    sds_ref_aster, _ = open_gdal(file_refl_ASTER)
+    ref_red_aster = sds_ref_aster[1].ReadAsArray() * 0.001
+    ref_nir_aster = sds_ref_aster[2].ReadAsArray() * 0.001
+    ndvi = cal_NDVI(ref_red_aster, ref_nir_aster)
+    # 遍历所有像元计算
+    LSTs = []
+    LSTv = []
+    SEv_10 = []
+    SEs_10 = []
+    SEv_11 = []
+    SEs_11 = []
+    SEv_12 = []
+    SEs_12 = []
+    SEv_13 = []
+    SEs_13 = []
+    SEv_14 = []
+    SEs_14 = []
+    num_veg = 0
+    num_soil = 0
+    for y in range(SE_10.shape[0]):
+        for x in range(SE_10.shape[1]):
+            # 去除边缘无数据点与云
+            if SE_10[y, x] > 0.5:
+                # 获取对应的6*6个NDVI值，用平均值代替
+                cur_ndvi = np.mean(ndvi[y * 6:y * 6 + 5, x * 6:x * 6 + 5])
+                # if cur_ndvi > threshold_NDVI:
+                #     num_veg += 1
+                #     LSTv.append(lst_aster[y, x])
+                # else:
+                #     num_soil += 1
+                #     LSTs.append(lst_aster[y, x])
+
+                # 计算更极端的端元温度值
+                if cur_ndvi > 0.6:
+                    num_veg += 1
+                    SEv_10.append(SE_10[y, x])
+                    SEv_11.append(SE_11[y, x])
+                    SEv_12.append(SE_12[y, x])
+                    SEv_13.append(SE_13[y, x])
+                    SEv_14.append(SE_14[y, x])
+                elif cur_ndvi < 0.08:
+                    num_soil += 1
+                    SEs_10.append(SE_10[y, x])
+                    SEs_11.append(SE_11[y, x])
+                    SEs_12.append(SE_12[y, x])
+                    SEs_13.append(SE_13[y, x])
+                    SEs_14.append(SE_14[y, x])
+
+    print(num_soil)
+    print(num_veg)
+    print(np.mean(SEs_10))
+    print(np.mean(SEv_10))
+    print(np.mean(SEs_11))
+    print(np.mean(SEv_11))
+    print(np.mean(SEs_12))
+    print(np.mean(SEv_12))
+    print(np.mean(SEs_13))
+    print(np.mean(SEv_13))
+    print(np.mean(SEs_14))
+    print(np.mean(SEv_14))
 
 
 def getEdges(lst: np.ndarray, ndvi: np.ndarray):
@@ -741,18 +811,20 @@ def cal_channelSE():
     根据波段发射率计算通道发射率
     :return:
     """
-
+    pass
+# </editor-fold>    计算
 
 # ****************************************** 其他函数 **************************************
+# <editor-fold>
 
 
-def lst2BTs(lst):
+def lst2BTs(lst, file=file_LUT):
     """
     transform lst data into BTs data
     :param lst:
     :return:
     """
-    LUT = get_LUT(file_LUT)
+    LUT = get_LUT(file)
     if type(lst) == np.ndarray:
         shape = lst.shape
         BTs = np.zeros(shape, dtype=np.float64)
@@ -766,13 +838,13 @@ def lst2BTs(lst):
     return BTs
 
 
-def BTs2lst(BTs):
+def BTs2lst(BTs, file=file_LUT):
     """
     transform BTs data into lst data
     :param BTs:
     :return:
     """
-    LUT = get_LUT(file_LUT)
+    LUT = get_LUT(file)
     if type(BTs) == np.ndarray:
         shape = BTs.shape
         lst = np.zeros(shape, dtype=np.float64)
@@ -845,8 +917,11 @@ def get_aster_lat_lon(sds):
     # 将数组转化为ndarray再返回
     return np.asarray(lat), np.asarray(lon)
 
+# </editor-fold>
 
 # ****************************************** 绘制图像 **************************************
+# <editor-fold>
+
 
 def display(data, title, cmap=None):
     """
@@ -913,7 +988,7 @@ def scatter_BTs_fvc(BT, fvc, k1, c1, k2, c2):
     plt.legend()
     plt.xlabel("FVC")
     plt.ylabel("Radiance")
-    plt.ylim(5, 7.5)
+    # plt.ylim(5, 7.5)
     # plt.ylim(np.min(BT) - 0.5, np.max(BT) + 0.5)
     # plt.xlim(0, 1.2)
     # plt.savefig("fvc_BTs_edges.png")
@@ -980,6 +1055,7 @@ def display_FVCdiff():
     diff = (FVC_60 - FVC_0) * is_valid
     write_tiff(diff, "FVC_diff")
 
+# </editor-fold>
 
 # ****************************************** 综合 ******************************************
 
@@ -1012,6 +1088,14 @@ def main_hdf():
     ref_vis_aster = sds_ref_aster[0].ReadAsArray() * 0.001
     ref_red_aster = sds_ref_aster[1].ReadAsArray() * 0.001
     ref_nir_aster = sds_ref_aster[2].ReadAsArray() * 0.001
+    # 发射率，分辨率与温度相同
+    # 5个波段
+    sds_se_aster, _ = open_gdal(file_SE_ASTER)
+    SE_10 = sds_se_aster[0].ReadAsArray() * 0.001
+    SE_11 = sds_se_aster[1].ReadAsArray() * 0.001
+    SE_12 = sds_se_aster[2].ReadAsArray() * 0.001
+    SE_13 = sds_se_aster[3].ReadAsArray() * 0.001
+    SE_14 = sds_se_aster[4].ReadAsArray() * 0.001
 
     # MODIS
     # MODIS的hdf中有坐标信息，因此用到metadata
@@ -1084,16 +1168,46 @@ def main_hdf():
     print("done FVC calculation")
 
     # 用于存储植被覆盖度与辐亮度的数组
+    # BT_60_10 = np.zeros(LAI.shape, dtype=np.float64)
+    # BT_0_10 = np.zeros(LAI.shape, dtype=np.float64)
+    # BT_60_11 = np.zeros(LAI.shape, dtype=np.float64)
+    # BT_0_11 = np.zeros(LAI.shape, dtype=np.float64)
     BT_60 = np.zeros(LAI.shape, dtype=np.float64)
     BT_0 = np.zeros(LAI.shape, dtype=np.float64)
+    # BT_60_13 = np.zeros(LAI.shape, dtype=np.float64)
+    # BT_0_13 = np.zeros(LAI.shape, dtype=np.float64)
+    # BT_60_14 = np.zeros(LAI.shape, dtype=np.float64)
+    # BT_0_14 = np.zeros(LAI.shape, dtype=np.float64)
+    LSTv_all = np.zeros(LAI.shape, dtype=np.float64)
+    LSTs_all = np.zeros(LAI.shape, dtype=np.float64)
+    SEs_aver_10 = np.zeros(LAI.shape, dtype=np.float64)
+    SEs_aver_11 = np.zeros(LAI.shape, dtype=np.float64)
+    SEs_aver_12 = np.zeros(LAI.shape, dtype=np.float64)
+    SEs_aver_13 = np.zeros(LAI.shape, dtype=np.float64)
+    SEs_aver_14 = np.zeros(LAI.shape, dtype=np.float64)
+    SEv_aver_10 = np.zeros(LAI.shape, dtype=np.float64)
+    SEv_aver_11 = np.zeros(LAI.shape, dtype=np.float64)
+    SEv_aver_12 = np.zeros(LAI.shape, dtype=np.float64)
+    SEv_aver_13 = np.zeros(LAI.shape, dtype=np.float64)
+    SEv_aver_14 = np.zeros(LAI.shape, dtype=np.float64)
     # 用于存储构造特征空间的数据的列表，数据用[BT,fvc]记录
     space_data_list = []
     is_valid = np.zeros(LAI.shape, dtype=bool)
-    for y_modis in range(LAI.shape[0]):     # 一行
+    for y_modis in range(LAI.shape[0]):         # 一行
         for x_modis in range(LAI.shape[1]):
-            # 对当前MODIS像元
+            # 对当前MODIS像元，用于存储平均温度、发射率信息的列表
             LSTv = []
             LSTs = []
+            SEv = []
+            SEs = []
+            SEv_10 = []
+            SEs_10 = []
+            SEv_11 = []
+            SEs_11 = []
+            SEv_13 = []
+            SEs_13 = []
+            SEv_14 = []
+            SEs_14 = []
             # 当前MODIS像元坐标范围
             cur_minLon = geotrans_LAI[0] + geotrans_LAI[1] * (min_x-1+x_modis-0.5)
             cur_maxLon = geotrans_LAI[0] + geotrans_LAI[1] * (min_x-1+x_modis+0.5)
@@ -1126,8 +1240,18 @@ def main_hdf():
                             # 根据平均NDVI值判断是植被还是土壤
                             if cur_ndvi > threshold_NDVI:
                                 LSTv.append(lst_aster[y_aster, x_aster])
+                                SEv_10.append(SE_10[y_aster, x_aster])
+                                SEv_11.append(SE_11[y_aster, x_aster])
+                                SEv.append(SE_12[y_aster, x_aster])
+                                SEv_13.append(SE_13[y_aster, x_aster])
+                                SEv_14.append(SE_14[y_aster, x_aster])
                             else:
                                 LSTs.append(lst_aster[y_aster, x_aster])
+                                SEs_10.append(SE_10[y_aster, x_aster])
+                                SEs_11.append(SE_11[y_aster, x_aster])
+                                SEs.append(SE_12[y_aster, x_aster])
+                                SEs_13.append(SE_13[y_aster, x_aster])
+                                SEs_14.append(SE_14[y_aster, x_aster])
                             # 判断是否为阴影（山/云）或水
                             # 计算nir波段反射率方差
                             cur_std = np.std(cur_nir)
@@ -1150,22 +1274,48 @@ def main_hdf():
                     else:
                         continue
 
+            if len(LSTv) > 0:
+                LSTv_all[y_modis, x_modis] = np.mean(LSTv)
+                SEv_aver_10[y_modis, x_modis] = np.mean(SEv_10)
+                SEv_aver_11[y_modis, x_modis] = np.mean(SEv_11)
+                SEv_aver_12[y_modis, x_modis] = np.mean(SEv)
+                SEv_aver_13[y_modis, x_modis] = np.mean(SEv_13)
+                SEv_aver_14[y_modis, x_modis] = np.mean(SEv_14)
+            if len(LSTs) > 0:
+                LSTs_all[y_modis, x_modis] = np.mean(LSTs)
+                SEs_aver_10[y_modis, x_modis] = np.mean(SEs_10)
+                SEs_aver_11[y_modis, x_modis] = np.mean(SEs_11)
+                SEs_aver_12[y_modis, x_modis] = np.mean(SEs)
+                SEs_aver_13[y_modis, x_modis] = np.mean(SEs_13)
+                SEs_aver_14[y_modis, x_modis] = np.mean(SEs_14)
+
             # 全图没找到合适的ASTER像元则做特殊处理
             if len(LSTs) == 0:
                 if len(LSTv) == 0:
                     # 一个都没有，即不在研究区内，生成特征空间时需去除
+                    # 原本值就是0
                     BT_60[y_modis, x_modis] = 0
                     BT_0[y_modis, x_modis] = 0
                     continue
                 # 只是没有土壤像元，给定值
                 else:
                     LSTs.append(300)
+                    SEs_10.append((0.9020084838201431))
+                    SEs_11.append((0.9418323839534603))
+                    SEs.append((0.9528154163131743))
+                    SEs_13.append((0.9536585868379591))
+                    SEs_14.append((0.9227660889589141))
             # 没有植被像元
             if len(LSTv) == 0:
                 LSTv.append(294)
+                SEv_10.append(0.9543614475923516)
+                SEv_11.append(0.9571705626188807)
+                SEv.append(0.9571284913404745)
+                SEv_13.append(0.9731239613574934)
+                SEv_14.append(0.9680031784963461)
 
             # 对平均温度进行判断（对水与大部分云的阴影进一步去除）
-            if np.mean(LSTs) <= 288:
+            if np.mean(LSTs) <= 285:
                 is_valid[y_modis, x_modis] = False
 
             # 对当前MODIS像元计算辐亮度
@@ -1179,14 +1329,15 @@ def main_hdf():
                 cur_BTs = 0
                 print(e)
             # 原始角度
-            BT_60[y_modis, x_modis] = FVC_60[y_modis, x_modis] * cur_BTv + (1 - FVC_60[y_modis, x_modis]) * cur_BTs
+            BT_60[y_modis, x_modis] = FVC_60[y_modis, x_modis] * cur_BTv * np.mean(SEv) + (1 - FVC_60[y_modis, x_modis]) * cur_BTs * np.mean(SEs)
             # 垂直方向
-            BT_0[y_modis, x_modis] = FVC_0[y_modis, x_modis] * cur_BTv + (1 - FVC_0[y_modis, x_modis]) * cur_BTs
+            BT_0[y_modis, x_modis] = FVC_0[y_modis, x_modis] * cur_BTv * np.mean(SEv) + (1 - FVC_0[y_modis, x_modis]) * cur_BTs * np.mean(SEs)
 
             # 如果是云/水像元则不参与特征空间的构造，否则存入数组
             if is_valid[y_modis, x_modis]:
                 space_data_list.append([BT_60[y_modis, x_modis], FVC_60[y_modis, x_modis]])
 
+    print("done BT calculation")
     # </editor-fold>
 
     # <editor-fold> 建立特征空间，计算根据特征空间得到的的radiance
@@ -1200,8 +1351,21 @@ def main_hdf():
     fvc_space = fvc_space.reshape((1, fvc_space.shape[0]))
 
     # 出图
+    write_tiff(LSTv_all, "LSTv_all")
+    write_tiff(LSTs_all, "LSTs_all")
+    write_tiff(SEs_aver_10, "SEs_aver_10")
+    write_tiff(SEs_aver_11, "SEs_aver_11")
+    write_tiff(SEs_aver_12, "SEs_aver_12")
+    write_tiff(SEs_aver_13, "SEs_aver_13")
+    write_tiff(SEs_aver_14, "SEs_aver_14")
+    write_tiff(SEv_aver_10, "SEv_aver_10")
+    write_tiff(SEv_aver_11, "SEv_aver_11")
+    write_tiff(SEv_aver_12, "SEv_aver_12")
+    write_tiff(SEv_aver_13, "SEv_aver_13")
+    write_tiff(SEv_aver_14, "SEv_aver_14")
+
     write_tiff(fvc_space, "FVC_space")
-    write_tiff(BT_60, "BT")
+    write_tiff(BT_60, "BT_60")
     write_tiff(BT_0, "BT_0")
     write_tiff(BT_space, "BT_space")
     write_tiff(is_valid, "is_valid")
@@ -1217,7 +1381,7 @@ def main_space():
     :return:
     """
     # 读取相关数据
-    ds_BT, BT = open_tiff("pics/BT.tif")
+    ds_BT, BT = open_tiff("pics/BT_60.tif")
     ds_BT_space, BT_space = open_tiff("pics/BT_space.tif")
     ds_BT_0, BT_0 = open_tiff("pics/BT_0.tif")
     ds_fvc, fvc = open_tiff("pics/FVC.tif")
@@ -1377,11 +1541,12 @@ def sensitivity_VZA():
 
 
 if __name__ == '__main__':
-    test()
+    # test()
     # cal_mean_LSTvs()
     # main_hdf()
-    # main_space()
+    main_space()
     # cal_mean_LSTvs()
+    # cal_mean_SEvs()
     # display_LUT()
     # sensitivity_VZA()
     # display_lines_0_60()

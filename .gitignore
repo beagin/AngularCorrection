@@ -7,3 +7,5 @@ ASTER/*.pdf
 *.xlsx
 Emissivity/
 SRF/
+*.tar
+*.gz
