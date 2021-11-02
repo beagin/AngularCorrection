@@ -44,7 +44,7 @@ file_MCD43A1_B2_1 = "data/MODIS/MCD43A1.BRDF_Albedo_Parameters_Band2.Num_Paramet
 file_MCD43A1_B2_2 = "data/MODIS/MCD43A1.BRDF_Albedo_Parameters_Band2.Num_Parameters_02.tif"
 file_MCD43A1_B2_3 = "data/MODIS/MCD43A1.BRDF_Albedo_Parameters_Band2.Num_Parameters_03.tif"
 # 聚集指数
-# DOY233即233-240
+# DOY233 即 233-240
 file_CI = "data/CI/CI_6.tif"
 # 查找表
 file_LUT = "SRF/LUT12.txt"
@@ -818,13 +818,14 @@ def cal_channelSE():
 # <editor-fold>
 
 
-def lst2BTs(lst, file=file_LUT):
+def lst2BTs(lst, band=12):
     """
     transform lst data into BTs data
     :param lst:
     :return:
     """
-    LUT = get_LUT(file)
+    fileName = "SRF/LUT" + str(band) + ".txt"
+    LUT = get_LUT(fileName)
     if type(lst) == np.ndarray:
         shape = lst.shape
         BTs = np.zeros(shape, dtype=np.float64)
@@ -838,13 +839,14 @@ def lst2BTs(lst, file=file_LUT):
     return BTs
 
 
-def BTs2lst(BTs, file=file_LUT):
+def BTs2lst(BTs, band=12):
     """
     transform BTs data into lst data
     :param BTs:
     :return:
     """
-    LUT = get_LUT(file)
+    fileName = "SRF/LUT" + str(band) + ".txt"
+    LUT = get_LUT(fileName)
     if type(BTs) == np.ndarray:
         shape = BTs.shape
         lst = np.zeros(shape, dtype=np.float64)
@@ -1375,6 +1377,42 @@ def main_hdf():
     # </editor-fold>
 
 
+def main_calRadiance(band=12):
+    """
+    从平均组分温度、组分发射率、植被覆盖度来计算辐亮度
+    :return:
+    """
+    # 打开所需数据文件
+    _, LSTv = open_tiff("pics/LSTv_all.tif")
+    _, LSTs = open_tiff("pics/LSTs_all.tif")
+    _, SEs = open_tiff("pics/SEs_aver_" + str(band) + ".tif")
+    _, SEv = open_tiff("pics/SEv_aver_" + str(band) + ".tif")
+    _, FVC_60 = open_tiff("pics/FVC.tif")
+    _, FVC_0 = open_tiff("pics/FVC_0.tif")
+    _, is_valid = open_tiff("pics/is_valid.tif")
+    # 存储计算出来的两个角度辐亮度的数组
+    BT_0 = np.zeros(LSTs.shape, dtype=np.float64)
+    BT_60 = np.zeros(LSTs.shape, dtype=np.float64)
+    # 遍历每个像元，计算辐亮度
+    for y in range(LSTs.shape[0]):
+        for x in range(LSTs.shape[1]):
+            # 是有效像元才进行计算
+            if is_valid[y, x]:
+                # 有土壤组分
+                if LSTs[y, x] > 0:
+                    BTs = lst2BTs(LSTs[y, x], band)
+                    # 两种组分都有
+                    if LSTv[y, x] > 0:
+                        BTv = lst2BTs(LSTv[y, x], band)
+                        BT_0[y, x] = FVC_0[y, x] * BTv * SEv[y, x] + (1 - FVC_0[y, x]) * BTs * SEs[y, x]
+                        BT_60[y, x] = FVC_60[y, x] * BTv * SEv[y, x] + (1 - FVC_0[y, x]) * BTs * SEs[y, x]
+                        continue
+                # 其他情况都不考虑
+
+    write_tiff(BT_0, "BT_0_" + str(band))
+    write_tiff(BT_60, "BT_60_" + str(band))
+
+
 def main_space():
     """
     得到模拟结果后，进行特征空间相关处理
@@ -1544,10 +1582,13 @@ if __name__ == '__main__':
     # test()
     # cal_mean_LSTvs()
     # main_hdf()
-    main_space()
+    # main_space()
     # cal_mean_LSTvs()
     # cal_mean_SEvs()
     # display_LUT()
     # sensitivity_VZA()
     # display_lines_0_60()
     # display_FVCdiff()
+
+    for i in range(10, 15):
+        main_calRadiance(i)
