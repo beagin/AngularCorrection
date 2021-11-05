@@ -546,20 +546,21 @@ def getEdges_fvc(BT: np.ndarray, fvc: np.ndarray):
     print("BT_aver: " + str(BT_aver))
     print("BT_std: " + str(BT_std))
 
+    # TODO：需将数组都转换为一元
+
     # divide the FVC into intervals, 10 * 8 subintervals
     interval_num = 10
     subinterval_num = 8
     # do the statics
     BTs = [[[] for j in range(subinterval_num)] for i in range(interval_num)]
     for i in range(BT.shape[0]):
-        for j in range(BT.shape[1]):
-            # 去除异常值
-            if fvc[i, j] <= 1e-2 or fvc[i, j] >= 1:
-                continue
-            if BT[i, j] <= 0 or BT[i, j] >= BT_aver + 4 * BT_std or BT[i, j] <= BT_aver - 2.6 * BT_std:
-                continue
-            index = int(fvc[i, j] * interval_num * subinterval_num)
-            BTs[int(index / subinterval_num)][index % subinterval_num].append(BT[i, j])
+        # 去除异常值
+        if fvc[i] <= 1e-2 or fvc[i] >= 1:
+            continue
+        if BT[i] <= 0 or BT[i] >= BT_aver + 4 * BT_std or BT[i] <= BT_aver - 2.6 * BT_std:
+            continue
+        index = int(fvc[i] * interval_num * subinterval_num)
+        BTs[int(index / subinterval_num)][index % subinterval_num].append(BT[i])
     # delete those lst below 270
     Ts_  = [[[] for j in range(subinterval_num)] for i in range(interval_num)]
     for i in range(interval_num):
@@ -850,6 +851,7 @@ def BTs2lst(BTs, band=12):
     if type(BTs) == np.ndarray:
         shape = BTs.shape
         lst = np.zeros(shape, dtype=np.float64)
+        # TODO: 一维数组的情况
         for i in range(shape[0]):
             for j in range(shape[1]):
                 for k in range(len(LUT)):
@@ -957,7 +959,7 @@ def display_hist(data, title):
     plt.show()
 
 
-def scatter_BTs_fvc(BT, fvc, k1, c1, k2, c2):
+def scatter_BTs_fvc(BT, fvc, k1, c1, k2, c2, band=12, edge=True):
     """
     To draw the scatter
     :param lst_file:
@@ -975,17 +977,18 @@ def scatter_BTs_fvc(BT, fvc, k1, c1, k2, c2):
     # ndvi[ndvi>=1]=np.nan
 
     plt.scatter(fvc, BT, color="cornflowerblue", s=1.)
-    # edges
-    x = np.array([(0.025 + i * 0.05) for i in range(20)])
-    # x = np.array([(0.05 + i * 0.1) for i in range(10)])
-    y1 = x * k1 + c1
-    y2 = x * k2 + c2
+    if edge:
+        # edges
+        x = np.array([(0.025 + i * 0.05) for i in range(20)])
+        # x = np.array([(0.05 + i * 0.1) for i in range(10)])
+        y1 = x * k1 + c1
+        y2 = x * k2 + c2
 
-    # dry edge
-    plt.plot(x, y1, label="dry edge", color='r')
-    # wet edge
-    plt.plot(x, y2, label="wet edge", color='b')
-    # plt.plot(x, Tmin, label="wet edge", color='b')
+        # dry edge
+        plt.plot(x, y1, label="dry edge", color='r')
+        # wet edge
+        plt.plot(x, y2, label="wet edge", color='b')
+        # plt.plot(x, Tmin, label="wet edge", color='b')
 
     plt.legend()
     plt.xlabel("FVC")
@@ -994,7 +997,7 @@ def scatter_BTs_fvc(BT, fvc, k1, c1, k2, c2):
     # plt.ylim(np.min(BT) - 0.5, np.max(BT) + 0.5)
     # plt.xlim(0, 1.2)
     # plt.savefig("fvc_BTs_edges.png")
-    plt.savefig("pics/BTs_fvc_edges.png")
+    plt.savefig("pics/BTs_fvc_edges_" + str(band) + ".png")
     plt.show()
 
 
@@ -1012,37 +1015,24 @@ def display_LUT():
     plt.savefig("pics/LUT.png")
 
 
-def display_lines_0_60():
+def display_lines_0_60(BT_0, BT_60, FVC_0, FVC_60, band=12):
     """
     在同一特征空间内绘制0度与60数据的连线图
     :return:
     """
-    # 读取相关数据
-    _, BT_60 = open_tiff("pics/BT.tif")
-    _, BT_0 = open_tiff("pics/BT_0.tif")
-    _, FVC_60 = open_tiff("pics/FVC.tif")
-    _, FVC_0 = open_tiff("pics/FVC_0.tif")
-    _, is_valid = open_tiff("pics/is_valid.tif")
-
     # 绘制
     for i in range(BT_0.shape[0]):
-        for j in range(int(BT_0.shape[1])):
-        # for j in range(int(BT_0.shape[1]/2), BT_0.shape[1]):
-            # 有效性筛选
-            if not is_valid[i, j]:
-                continue
-            # 每个像元绘制0到60的连线
-            else:
-                # plt.annotate("", xy=(FVC_60[i, j], BT_60[i, j]), xytext=(FVC_0[i, j], BT_0[i, j]), )
-                plt.plot((FVC_0[i, j], FVC_60[i, j]), (BT_0[i, j], BT_60[i, j]),
-                    color=(random.randint(0, 200)/256, random.randint(0, 200)/256, random.randint(0, 200)/256), linewidth=0.5, alpha=0.5)
+        # 每个像元绘制0到60的连线
+        # plt.annotate("", xy=(FVC_60[i, j], BT_60[i, j]), xytext=(FVC_0[i, j], BT_0[i, j]), )
+        plt.plot((FVC_0[i], FVC_60[i]), (BT_0[i], BT_60[i]),
+            color=(random.randint(0, 200)/256, random.randint(0, 200)/256, random.randint(0, 200)/256), linewidth=0.5, alpha=0.5)
 
     # 坐标轴、标签等
     plt.xlabel("FVC")
     plt.ylabel("BT")
 
     # 存储与显示
-    plt.savefig("pics/lines_colorful.png", dpi=500)
+    plt.savefig("pics/lines_colorful_" + str(band) + ".png", dpi=500)
     plt.show()
 
 
@@ -1418,19 +1408,25 @@ def main_space(band=12):
     得到模拟结果后，进行特征空间相关处理
     :return:
     """
-    # 读取相关数据
+    # 读取相关数据：某一波段的多角度辐亮度
     ds_BT, BT = open_tiff("pics/BT_60_" + str(band) + ".tif")
     ds_BT_0, BT_0 = open_tiff("pics/BT_0_" + str(band) + ".tif")
     ds_fvc, fvc = open_tiff("pics/FVC.tif")
     ds_fvc_0, fvc_0 = open_tiff("pics/FVC_0.tif")
     ds_valid, is_valid = open_tiff("pics/is_valid.tif")
 
-    # 获取有效值
-    BT_valid = (BT * is_valid)[BT > 0]
-    BT_0_valid = (BT_0 * is_valid)[BT_0 > 0]
-    fvc_valid = (fvc * is_valid)[fvc > 0]
-    fvc_0_valid = (fvc_0 * is_valid)[fvc_0 > 0]
+    # 获取有效值（有效值转换为一维列表）
+    BT_valid = (BT * is_valid)[fvc > 0]
+    BT_valid = BT_valid[BT_valid > 0]
+    BT_0_valid = (BT_0 * is_valid)[fvc_0 > 0]
+    BT_0_valid = BT_0_valid[BT_0_valid > 0]
+    fvc_valid = (fvc * is_valid)[BT > 0]
+    fvc_valid = fvc_valid[fvc_valid > 0]
+    fvc_0_valid = (fvc_0 * is_valid)[BT_0 > 0]
+    fvc_0_valid = fvc_0_valid[fvc_0_valid > 0]
 
+    # 0-60图绘制
+    display_lines_0_60(BT_0_valid, BT_valid, fvc_0_valid, fvc_valid, band)
 
     # 直方图验证
     # hist, edges = np.histogram(fvc_space, 100)
@@ -1439,12 +1435,12 @@ def main_space(band=12):
 
     # 垂直角度的特征空间
     k1, c1, k2, c2 = getEdges_fvc(BT_0_valid, fvc_0_valid)
-    scatter_BTs_fvc(BT_0_valid, fvc_0_valid, k1, c1, k2, c2)
+    scatter_BTs_fvc(BT_0_valid, fvc_0_valid, k1, c1, k2, c2, band, False)
 
     # 生成特征空间
     k1, c1, k2, c2 = getEdges_fvc(BT_valid, fvc_valid)
     # 出图
-    scatter_BTs_fvc(BT_valid, fvc_valid, k1, c1, k2, c2)
+    scatter_BTs_fvc(BT_valid, fvc_valid, k1, c1, k2, c2, band, False)
     # 计算特征空间中的顶点
     point_x, point_y = cal_vertex(k1, c1, k2, c2)
     print(point_x, point_y)
@@ -1452,18 +1448,17 @@ def main_space(band=12):
     # 根据fvc_0与特征空间计算垂直方向辐亮度
     BT_0_space = np.zeros(BT_0_valid.shape, dtype=np.float64)
     for i in range(BT_0_valid.shape[0]):
-        for j in range(BT_0_valid.shape[1]):
-            # FVC过大的点直接去除
-            if fvc_0_valid[i, j] > point_x or fvc[i, j] > point_x:
-                continue
-            k, c = cal_params(point_y, point_x, BT_valid[i, j], fvc_valid[i, j])
-            BT_0_space[i, j] = k * fvc_0_valid[i, j] + c
-            # BT差值大于0.5
-            if np.abs(BT_0_space[i, j] - BT_valid[i, j]) > 0.5:
-                print("fvc:\t" + str(fvc_valid[i, j]))
-                print("fvc_0:\t" + str(fvc_0_valid[i, j]))
-                print("BT:\t" + str(BT_valid[i, j]))
-                print("BT_0_spcae:\t" + str(BT_0_space[i, j]))
+        # FVC过大的点直接去除
+        if fvc_0_valid[i] > point_x or fvc[i] > point_x:
+            continue
+        k, c = cal_params(point_y, point_x, BT_valid[i], fvc_valid[i])
+        BT_0_space[i] = k * fvc_0_valid[i] + c
+        # BT差值大于0.5
+        if np.abs(BT_0_space[i] - BT_valid[i]) > 0.5:
+            print("fvc:\t" + str(fvc_valid[i]))
+            print("fvc_0:\t" + str(fvc_0_valid[i]))
+            print("BT:\t" + str(BT_valid[i]))
+            print("BT_0_spcae:\t" + str(BT_0_space[i]))
 
     # <editor-fold> 结果定量分析
 
@@ -1578,10 +1573,10 @@ def sensitivity_VZA():
 
 
 if __name__ == '__main__':
-    test()
+    # test()
     # cal_mean_LSTvs()
     # main_hdf()
-    # main_space()
+    main_space(14)
     # cal_mean_LSTvs()
     # cal_mean_SEvs()
     # display_LUT()
