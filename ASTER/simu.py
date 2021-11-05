@@ -1032,7 +1032,7 @@ def display_lines_0_60(BT_0, BT_60, FVC_0, FVC_60, band=12):
     plt.ylabel("BT")
 
     # 存储与显示
-    plt.savefig("pics/lines_colorful_" + str(band) + ".png", dpi=500)
+    plt.savefig("pics/lines_colorful_   " + str(band) + ".png", dpi=500)
     plt.show()
 
 
@@ -1046,6 +1046,45 @@ def display_FVCdiff():
     _, is_valid = open_tiff("pics/is_valid.tif")
     diff = (FVC_60 - FVC_0) * is_valid
     write_tiff(diff, "FVC_diff")
+
+
+def display_BTsv_diff():
+    """
+    求一定波段的植被/土壤组分辐亮度及其差值，作箱线图
+    :return:
+    """
+    _, LSTv = open_tiff("pics/LSTv_all.tif")
+    _, LSTs = open_tiff("pics/LSTs_all.tif")
+
+    diff_all = []
+
+    for i in range(10, 15):
+        # 每个波段计算发射率v/s乘BTs/BTv的结果
+        _, SEv = open_tiff("pics/SEv_aver_" + str(i) + ".tif")
+        _, SEs = open_tiff("pics/SEs_aver_" + str(i) + ".tif")
+        BTv = SEv * LSTv
+        BTs = SEs * LSTs
+        diff = BTs - BTv
+        # write_tiff(diff, "diff_sv_" + str(i))
+        # write_tiff(BTv, "BTv_all_" + str(i))
+        # write_tiff(BTs, "BTs_all_" + str(i))
+
+        diff = diff[diff < 20]
+        diff = diff[diff > -20]
+        diff = diff[diff != 0]
+        print(diff.shape)
+        diff_all.append(diff.tolist())
+        # display_hist(diff, "diff_sv_" + str(i))   # 当前波段的差值直方图，效果不好（主要在0左右）
+
+    # 箱线图：效果也不好
+    fig, ax = plt.subplots()
+    ax.boxplot(diff_all, meanline=True, showfliers=False)
+    ax.set_xticklabels([str(x) for x in range(10, 15)])
+    ax.set_xlabel("bands")
+    ax.set_ylabel("BTs-BTv")
+    fig.savefig("pics/boxplot_BTsv.png", dpi=400)
+
+    return
 
 # </editor-fold>
 
@@ -1499,7 +1538,8 @@ def test():
     # fvc60 = cal_fvc_gap(a, b, 60)
     # print(fvc0)
     # print(fvc60)
-    sds, _ = open_gdal("MYD21A1D.A2018209.h24v04.006.2018294052046.hdf")
+
+
 
 
 def sensitivity_overall():
@@ -1572,11 +1612,14 @@ def sensitivity_VZA():
     fig.savefig('pics/sensitivity/boxplot_VZA60.png', dpi=400)
 
 
+
+
+
 if __name__ == '__main__':
-    # test()
+    test()
     # cal_mean_LSTvs()
     # main_hdf()
-    main_space(14)
+    # main_space(14)
     # cal_mean_LSTvs()
     # cal_mean_SEvs()
     # display_LUT()

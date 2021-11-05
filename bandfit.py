@@ -155,20 +155,11 @@ def cal_RMSE():
     _, GF = open_tiff("GF5_validation/20191121/stacking_gf3.tif")
     _, MODIS = open_tiff("GF5_validation/20191121/stacking_modis2.tif")
 
-    # 记录有效值，用于计算RMSE
-    GFlist = []
-    MODlist = []
 
     GF_valid = GF[np.abs(GF) <= 1]
     MOD_valid = MODIS[np.abs(GF) <= 1]
 
     print(len(GF_valid), len(MOD_valid))
-
-    # for i in range(GF.shape[0]):
-    #     for j in range(GF.shape[1]):
-    #         # 判断GF数值为有效值
-    #         if np.abs(GF[i, j]) < 1:
-    #             GFlist.append()
 
     RMSE = np.sqrt(metrics.mean_squared_error(GF_valid, MOD_valid))
     print(RMSE)
