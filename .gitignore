@@ -1,11 +1,12 @@
 .idea/
 ASTER/data/
 ASTER/pics/
-ASTER/*.pdf
+*.pdf
 *.png
 *.jpg
 *.xlsx
-Emissivity/
-SRF/
+GF5_validation/
 *.tar
 *.gz
+ASTER/SRF/
+*.hdf

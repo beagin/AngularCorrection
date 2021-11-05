@@ -97,8 +97,8 @@ def open_gdal(fileName):
     hdf = gdal.Open(fileName)
     # subDataset
     subdatasets = hdf.GetSubDatasets()
-    # for subDataset in subdatasets:
-    #     print(subDataset)
+    for subDataset in subdatasets:
+        print(subDataset)
     # 查看元数据
     metadata = hdf.GetMetadata()
     # print(metadata)
@@ -1413,64 +1413,63 @@ def main_calRadiance(band=12):
     write_tiff(BT_60, "BT_60_" + str(band))
 
 
-def main_space():
+def main_space(band=12):
     """
     得到模拟结果后，进行特征空间相关处理
     :return:
     """
     # 读取相关数据
-    ds_BT, BT = open_tiff("pics/BT_60.tif")
-    ds_BT_space, BT_space = open_tiff("pics/BT_space.tif")
-    ds_BT_0, BT_0 = open_tiff("pics/BT_0.tif")
+    ds_BT, BT = open_tiff("pics/BT_60_" + str(band) + ".tif")
+    ds_BT_0, BT_0 = open_tiff("pics/BT_0_" + str(band) + ".tif")
     ds_fvc, fvc = open_tiff("pics/FVC.tif")
-    ds_fvc_space, fvc_space = open_tiff("pics/FVC_space.tif")
     ds_fvc_0, fvc_0 = open_tiff("pics/FVC_0.tif")
     ds_valid, is_valid = open_tiff("pics/is_valid.tif")
 
+    # 获取有效值
+    BT_valid = (BT * is_valid)[BT > 0]
+    BT_0_valid = (BT_0 * is_valid)[BT_0 > 0]
+    fvc_valid = (fvc * is_valid)[fvc > 0]
+    fvc_0_valid = (fvc_0 * is_valid)[fvc_0 > 0]
+
+
     # 直方图验证
-    hist, edges = np.histogram(fvc_space, 100)
-    print(hist)
-    print(edges)
+    # hist, edges = np.histogram(fvc_space, 100)
+    # print(hist)
+    # print(edges)
 
     # 垂直角度的特征空间
-    BT_0 = BT_0 * is_valid
-    fvc_0 = fvc_0 * is_valid
-    k1, c1, k2, c2 = getEdges_fvc(BT_0, fvc_0)
-    scatter_BTs_fvc(BT_0, fvc_0, k1, c1, k2, c2)
+    k1, c1, k2, c2 = getEdges_fvc(BT_0_valid, fvc_0_valid)
+    scatter_BTs_fvc(BT_0_valid, fvc_0_valid, k1, c1, k2, c2)
 
     # 生成特征空间
-    k1, c1, k2, c2 = getEdges_fvc(BT_space, fvc_space)
+    k1, c1, k2, c2 = getEdges_fvc(BT_valid, fvc_valid)
     # 出图
-    scatter_BTs_fvc(BT_space, fvc_space, k1, c1, k2, c2)
+    scatter_BTs_fvc(BT_valid, fvc_valid, k1, c1, k2, c2)
     # 计算特征空间中的顶点
     point_x, point_y = cal_vertex(k1, c1, k2, c2)
     print(point_x, point_y)
 
     # 根据fvc_0与特征空间计算垂直方向辐亮度
-    BT_0_space = np.zeros(BT_0.shape, dtype=np.float64)
-    for i in range(BT_0.shape[0]):
-        for j in range(BT_0.shape[1]):
+    BT_0_space = np.zeros(BT_0_valid.shape, dtype=np.float64)
+    for i in range(BT_0_valid.shape[0]):
+        for j in range(BT_0_valid.shape[1]):
             # FVC过大的点直接去除
-            if fvc_0[i, j] > point_x or fvc[i, j] > point_x:
-                is_valid[i, j] = 0
+            if fvc_0_valid[i, j] > point_x or fvc[i, j] > point_x:
                 continue
-            k, c = cal_params(point_y, point_x, BT[i, j], fvc[i, j])
-            BT_0_space[i, j] = k * fvc_0[i, j] + c
-            if is_valid[i, j] != 0 and np.abs(BT_0_space[i, j] - BT[i, j]) > 0.5:
-                print("fvc:\t" + str(fvc[i, j]))
-                print("fvc_0:\t" + str(fvc_0[i, j]))
-                print("BT:\t" + str(BT[i, j]))
+            k, c = cal_params(point_y, point_x, BT_valid[i, j], fvc_valid[i, j])
+            BT_0_space[i, j] = k * fvc_0_valid[i, j] + c
+            # BT差值大于0.5
+            if np.abs(BT_0_space[i, j] - BT_valid[i, j]) > 0.5:
+                print("fvc:\t" + str(fvc_valid[i, j]))
+                print("fvc_0:\t" + str(fvc_0_valid[i, j]))
+                print("BT:\t" + str(BT_valid[i, j]))
                 print("BT_0_spcae:\t" + str(BT_0_space[i, j]))
 
-    # 获取有效数据
-    BT_0_space_valid = BT_0_space * is_valid
-    BT_valid = BT * is_valid
-    BT_0_valid = BT_0 * is_valid
     # <editor-fold> 结果定量分析
 
     # 计算结果与模拟结果进行对比
-    display_hist(BT_0_space_valid - BT_0_valid, "BT_diff_space_0")
-    RMSE_BT_space_0 = np.sqrt(metrics.mean_squared_error(BT_0_valid, BT_0_space_valid))
+    display_hist(BT_0_space - BT_0_valid, "BT_diff_space_0")
+    RMSE_BT_space_0 = np.sqrt(metrics.mean_squared_error(BT_0_valid, BT_0_space))
     print("RMSE_BT_space_0:\t" + str(RMSE_BT_space_0))
 
     # 原始数据与模拟结果的对比
@@ -1479,8 +1478,8 @@ def main_space():
     print("RMSE_BT_0:\t" + str(RMSE_BT_0))
 
     # 原始数据与特征空间结果的对比
-    display_hist(BT_0_space_valid - BT_valid, "BT_diff_space")
-    RMSE_BT_space = np.sqrt(metrics.mean_squared_error(BT_valid, BT_0_space_valid))
+    display_hist(BT_0_space - BT_valid, "BT_diff_space")
+    RMSE_BT_space = np.sqrt(metrics.mean_squared_error(BT_valid, BT_0_space))
     print("RMSE_BT_space:\t" + str(RMSE_BT_space))
 
     # </editor-fold>
@@ -1488,11 +1487,11 @@ def main_space():
     # 温度对比
     LST = BTs2lst(BT_valid)
     LST_0 = BTs2lst(BT_0_valid)
-    LST_space_0 = BTs2lst(BT_0_space_valid)
+    LST_space_0 = BTs2lst(BT_0_space)
 
     # 出图
-    write_tiff(BT_0_space_valid, "BT_0_space_valid")
-    write_tiff((BT_0_space_valid-BT_0_valid), "BT_diff_0_space")
+    write_tiff(BT_0_space, "BT_0_space_valid")
+    write_tiff((BT_0_space-BT_0_valid), "BT_diff_0_space")
     write_tiff(LST, "LST_valid")
     write_tiff(LST_0, "LST_0_valid")
     write_tiff(LST_space_0, "LST_space_0_valid")
@@ -1505,7 +1504,7 @@ def test():
     # fvc60 = cal_fvc_gap(a, b, 60)
     # print(fvc0)
     # print(fvc60)
-    sds, _ = open_gdal(file_SE_ASTER)
+    sds, _ = open_gdal("MYD21A1D.A2018209.h24v04.006.2018294052046.hdf")
 
 
 def sensitivity_overall():
@@ -1579,7 +1578,7 @@ def sensitivity_VZA():
 
 
 if __name__ == '__main__':
-    # test()
+    test()
     # cal_mean_LSTvs()
     # main_hdf()
     # main_space()
@@ -1590,5 +1589,5 @@ if __name__ == '__main__':
     # display_lines_0_60()
     # display_FVCdiff()
 
-    for i in range(10, 15):
-        main_calRadiance(i)
+    # for i in range(10, 15):
+    #     main_calRadiance(i)

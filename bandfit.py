@@ -16,6 +16,8 @@ import requests
 from dateutil.parser import parse
 import datetime
 import re
+from sklearn import metrics
+from ASTER.simu import open_tiff
 
 
 class SimuBandEmiss(object):
@@ -105,9 +107,10 @@ def read_srf_MODIS(filePath):
         SRF = np.empty((2, len(lines)), dtype=float, order='C')
         for i in range(len(lines)):
             curItems = lines[i].split()
-            SRF[0][i] = float(curItems[0])
+            # SRF[0][i] = 1e4 / float(curItems[0])      # 波长单位：um
+            SRF[0][i] = float(curItems[0])      # 波长单位：um
             SRF[1][i] = float(curItems[1])
-    print(SRF)
+    # print(SRF)
     return SRF
 
 
@@ -120,15 +123,14 @@ def read_srf_GF5(filePath):
     with open(filePath, 'r') as file:
         # 读取文件中的所有内容
         lines = file.readlines()
-        # GF5文件中多了一行
-        lines = lines[1:]
         # 记录光谱响应函数的二维数组：（波长，响应率）
         SRF = np.empty((2, len(lines)), dtype=float, order='C')
         for i in range(len(lines)):
             curItems = lines[i].split()
-            SRF[0][i] = float(curItems[0])
+            SRF[0][i] = float(curItems[0])     # 波长单位：um
+            # SRF[0][i] = 1e4 / float(curItems[0])     # 波长单位：um
             SRF[1][i] = float(curItems[1])
-    print(SRF)
+    # print(SRF)
     return SRF
 
 
@@ -144,24 +146,157 @@ def fit_bands(x, y):
     return p
 
 
+def cal_RMSE():
+    """
+    计算两个tif文件数据的RMSE
+    :return:
+    """
+    # 打开GF-5与MODIS的发射率数据
+    _, GF = open_tiff("GF5_validation/20191121/stacking_gf3.tif")
+    _, MODIS = open_tiff("GF5_validation/20191121/stacking_modis2.tif")
+
+    # 记录有效值，用于计算RMSE
+    GFlist = []
+    MODlist = []
+
+    GF_valid = GF[np.abs(GF) <= 1]
+    MOD_valid = MODIS[np.abs(GF) <= 1]
+
+    print(len(GF_valid), len(MOD_valid))
+
+    # for i in range(GF.shape[0]):
+    #     for j in range(GF.shape[1]):
+    #         # 判断GF数值为有效值
+    #         if np.abs(GF[i, j]) < 1:
+    #             GFlist.append()
+
+    RMSE = np.sqrt(metrics.mean_squared_error(GF_valid, MOD_valid))
+    print(RMSE)
+    mean_diff = np.mean(GF_valid-MOD_valid)
+    print(mean_diff)
+
+
 def main():
     # 读取光谱响应函数文档，获取两个传感器的响应函数
-    GF5_SRF_path = 'SRF/GF5_band4.txt'
-    MODIS_SRF_path = 'SRF/MODIS/MODIS29.txt'
+    GF5_SRF_path = 'GF5_validation/rtcoef_gf5_1_vims_srf/GF5_VIMS_B04.txt'
+    # GF5_SRF_path = 'GF5_validation/rtcoef_gf5_1_vims_srf/GF5_VIMI_B08_Spectral_Response.txt'
+    MODIS_SRF_path = 'GF5_validation/rtcoef_eos_1_modis_srf/EOS_MODIS_B32.txt'
     GF5_SRF = read_srf_GF5(GF5_SRF_path)
     MODIS_SRF = read_srf_MODIS(MODIS_SRF_path)
     # 获取发射率库中的样本发射率，并根据响应函数计算为两个传感器的通道发射率
-    emiss_lab_path = 'Emissivity'
+    emiss_lab_path = 'GF5_validation/Emissivity'
     simu_GF5 = SimuBandEmiss(emiss_lab_path, [GF5_SRF])
     std, max, emiss_lab_GF5 = simu_GF5.stdEmiss()
     simu_MODIS = SimuBandEmiss(emiss_lab_path, [MODIS_SRF])
     std_, max_, emiss_lab_MODIS = simu_MODIS.stdEmiss()
-    print(emiss_lab_GF5)
-    print(emiss_lab_MODIS)
+    # print(emiss_lab_GF5)
+    # print(emiss_lab_MODIS)
     # 对两个通道发射率进行拟合，输出拟合的线性关系
-    print(fit_bands(emiss_lab_MODIS[:, 0], emiss_lab_GF5[:, 0]))
+    equation = fit_bands(emiss_lab_MODIS[:, 0], emiss_lab_GF5[:, 0])
+    print(equation)
+    print(type(equation))
     print(fit_bands(emiss_lab_GF5[:, 0], emiss_lab_MODIS[:, 0]))
+
+    plt.scatter(emiss_lab_MODIS[:, 0], emiss_lab_GF5[:, 0])
+    plt.plot([0, 1], [equation(0), equation(1)], color='black')
+    plt.xlabel("MODIS emissivity")
+    plt.ylabel("GF-5 emissivity")
+    plt.savefig("GF5_validation/B32_B6.png")
+
+
+def exportSRFs():
+    """
+    将GF-5与MODIS的6组波段响应函数文件导出为统一格式txt
+    :return:
+    """
+    # GF5
+    for i in range(1, 5):
+        original = open("GF5_validation/rtcoef_gf5_1_vims_srf/rtcoef_gf5_1_vims_srf_ch0" + str(i) + ".txt", "r")
+        new = open("GF5_validation/rtcoef_gf5_1_vims_srf/GF5_VIMS_B0" + str(i) + ".txt", "w")
+        lines = original.readlines()
+        for line in lines:
+            pair = line.split()
+            new.write(str(1e4 / float(pair[0])) + "\t" + str(float(pair[1])) + "\n")
+        original.close()
+        new.close()
+
+    # MODIS
+    for i in [20, 22, 23, 29, 31, 32]:
+        original = open("GF5_validation/rtcoef_eos_1_modis_srf/rtcoef_eos_1_modis_srf_ch" + str(i) + ".txt", "r")
+        new = open("GF5_validation/rtcoef_eos_1_modis_srf/EOS_MODIS_B" + str(i) + ".txt", "w")
+        lines = original.readlines()
+        for line in lines:
+            pair = line.split()
+            new.write(str(1e4 / float(pair[0])) + "\t" + str(float(pair[1])) + "\n")
+        original.close()
+        new.close()
+
+
+def displayBands_TIR():
+    """
+    将GF-5的中热红外6个波段与其对应的MODIS波段的响应函数绘制出来
+    :return:
+    """
+    # GF5
+    for i in range(1, 5):
+        file = open("GF5_validation/rtcoef_gf5_1_vims_srf/GF5_VIMS_B0" + str(i) + ".txt", "r")
+        lines = file.readlines()
+        data = [[float(a.split()[0]), float(a.split()[1])] for a in lines]
+        data = np.array(data)
+        print(data.shape)
+        plt.plot(data[:, 0], data[:, 1], label="GF5-TIR" + str(i))
+
+    # MODIS
+    for i in [29, 31, 32]:
+        file = open("GF5_validation/rtcoef_eos_1_modis_srf/EOS_MODIS_B" + str(i) + ".txt", "r")
+        lines = file.readlines()
+        data = [[float(a.split()[0]), float(a.split()[1])] for a in lines]
+        data = np.array(data)
+        print(data.shape)
+        plt.plot(data[:, 0], data[:, 1], label="MODIS-" + str(i))
+
+
+    plt.xlabel("Wavelength (μm)")
+    plt.ylabel("Spectral Response")
+    plt.legend(bbox_to_anchor=[0.27, 0.55])
+    plt.savefig("GF5_validation/SRF_TIR.png")
+    plt.show()
+
+
+def displayBands_MIR():
+    """
+    将GF-5的中热红外6个波段与其对应的MODIS波段的响应函数绘制出来
+    :return:
+    """
+    # GF5
+    for i in range(7, 9):
+        file = open("GF5_validation/rtcoef_gf5_1_vims_srf/GF5_VIMI_B0" + str(i) + "_Spectral_Response.txt", "r")
+        lines = file.readlines()
+        data = [[float(a.split()[0]), float(a.split()[1])] for a in lines]
+        data = np.array(data)
+        print(data.shape)
+        plt.plot(data[:, 0], data[:, 1], label="GF5-MIR"+str(i-6))
+
+    # MODIS
+    for i in [20, 22, 23]:
+        file = open("GF5_validation/rtcoef_eos_1_modis_srf/EOS_MODIS_B" + str(i) + ".txt", "r")
+        lines = file.readlines()
+        data = [[float(a.split()[0]), float(a.split()[1])] for a in lines]
+        data = np.array(data)
+        print(data.shape)
+        plt.plot(data[:, 0], data[:, 1], label="MODIS-" + str(i))
+
+    # plt.xlim(3.2, 5.6)
+    plt.xlabel("Wavelength (μm)")
+    plt.ylabel("Spectral Response")
+    plt.legend(bbox_to_anchor=[0.42, 0.95])
+    plt.savefig("GF5_validation/SRF_MIR.png")
+    plt.show()
 
 
 if __name__ == '__main__':
     main()
+    # cal_RMSE()
+    # exportSRFs()
+    # displayBands_MIR()
+    # displayBands_TIR()
