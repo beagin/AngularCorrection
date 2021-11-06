@@ -955,11 +955,11 @@ def display_hist(data, title):
     plt.hist(data, bins=100, density=True)
     plt.xlabel("difference")
     plt.ylabel("frequency")
-    plt.savefig("pics/" + title + "_hist.png")
+    plt.savefig("pics/" + title + "_hist.png", dpi=400)
     plt.show()
 
 
-def scatter_BTs_fvc(BT, fvc, k1, c1, k2, c2, band=12, edge=True):
+def scatter_BTs_fvc(BT, fvc, k1, c1, k2, c2, band=12, edge=True, angle=0):
     """
     To draw the scatter
     :param lst_file:
@@ -997,7 +997,7 @@ def scatter_BTs_fvc(BT, fvc, k1, c1, k2, c2, band=12, edge=True):
     # plt.ylim(np.min(BT) - 0.5, np.max(BT) + 0.5)
     # plt.xlim(0, 1.2)
     # plt.savefig("fvc_BTs_edges.png")
-    plt.savefig("pics/BTs_fvc_edges_" + str(band) + ".png")
+    plt.savefig("pics/BTs_fvc_edges_" + str(band) + "_" + str(angle) + ".png")
     plt.show()
 
 
@@ -1022,6 +1022,7 @@ def display_lines_0_60(BT_0, BT_60, FVC_0, FVC_60, band=12):
     """
     # 绘制
     for i in range(BT_0.shape[0]):
+    # for i in range(int(BT_0.shape[0] / 2), BT_0.shape[0]):
         # 每个像元绘制0到60的连线
         # plt.annotate("", xy=(FVC_60[i, j], BT_60[i, j]), xytext=(FVC_0[i, j], BT_0[i, j]), )
         plt.plot((FVC_0[i], FVC_60[i]), (BT_0[i], BT_60[i]),
@@ -1198,6 +1199,8 @@ def main_hdf():
     write_tiff(FVC_0, "FVC_0")
     print("done FVC calculation")
 
+    # 进行ASTER的像元分类，
+
     # 用于存储植被覆盖度与辐亮度的数组
     # BT_60_10 = np.zeros(LAI.shape, dtype=np.float64)
     # BT_0_10 = np.zeros(LAI.shape, dtype=np.float64)
@@ -1222,7 +1225,6 @@ def main_hdf():
     SEv_aver_13 = np.zeros(LAI.shape, dtype=np.float64)
     SEv_aver_14 = np.zeros(LAI.shape, dtype=np.float64)
     # 用于存储构造特征空间的数据的列表，数据用[BT,fvc]记录
-    space_data_list = []
     is_valid = np.zeros(LAI.shape, dtype=bool)
     for y_modis in range(LAI.shape[0]):         # 一行
         for x_modis in range(LAI.shape[1]):
@@ -1306,80 +1308,72 @@ def main_hdf():
                         continue
 
             if len(LSTv) > 0:
-                LSTv_all[y_modis, x_modis] = np.mean(LSTv)
+                LSTv_all[y_modis, x_modis] = np.min(LSTv)
                 SEv_aver_10[y_modis, x_modis] = np.mean(SEv_10)
                 SEv_aver_11[y_modis, x_modis] = np.mean(SEv_11)
                 SEv_aver_12[y_modis, x_modis] = np.mean(SEv)
                 SEv_aver_13[y_modis, x_modis] = np.mean(SEv_13)
                 SEv_aver_14[y_modis, x_modis] = np.mean(SEv_14)
             if len(LSTs) > 0:
-                LSTs_all[y_modis, x_modis] = np.mean(LSTs)
+                LSTs_all[y_modis, x_modis] = np.max(LSTs)
                 SEs_aver_10[y_modis, x_modis] = np.mean(SEs_10)
                 SEs_aver_11[y_modis, x_modis] = np.mean(SEs_11)
                 SEs_aver_12[y_modis, x_modis] = np.mean(SEs)
                 SEs_aver_13[y_modis, x_modis] = np.mean(SEs_13)
                 SEs_aver_14[y_modis, x_modis] = np.mean(SEs_14)
 
-            # 全图没找到合适的ASTER像元则做特殊处理
-            if len(LSTs) == 0:
-                if len(LSTv) == 0:
-                    # 一个都没有，即不在研究区内，生成特征空间时需去除
-                    # 原本值就是0
-                    BT_60[y_modis, x_modis] = 0
-                    BT_0[y_modis, x_modis] = 0
-                    continue
-                # 只是没有土壤像元，给定值
-                else:
-                    LSTs.append(300)
-                    SEs_10.append((0.9020084838201431))
-                    SEs_11.append((0.9418323839534603))
-                    SEs.append((0.9528154163131743))
-                    SEs_13.append((0.9536585868379591))
-                    SEs_14.append((0.9227660889589141))
-            # 没有植被像元
-            if len(LSTv) == 0:
-                LSTv.append(294)
-                SEv_10.append(0.9543614475923516)
-                SEv_11.append(0.9571705626188807)
-                SEv.append(0.9571284913404745)
-                SEv_13.append(0.9731239613574934)
-                SEv_14.append(0.9680031784963461)
+            # # 全图没找到合适的ASTER像元则做特殊处理
+            # if len(LSTs) == 0:
+            #     if len(LSTv) == 0:
+            #         # 一个都没有，即不在研究区内，生成特征空间时需去除
+            #         # 原本值就是0
+            #         # BT_60[y_modis, x_modis] = 0
+            #         # BT_0[y_modis, x_modis] = 0
+            #         continue
+            #     # 只是没有土壤像元，给定值
+            #     else:
+            #         LSTs.append(300)
+            #         SEs_10.append((0.9020084838201431))
+            #         SEs_11.append((0.9418323839534603))
+            #         SEs.append((0.9528154163131743))
+            #         SEs_13.append((0.9536585868379591))
+            #         SEs_14.append((0.9227660889589141))
+            # # 没有植被像元
+            # if len(LSTv) == 0:
+            #     LSTv.append(294)
+            #     SEv_10.append(0.9543614475923516)
+            #     SEv_11.append(0.9571705626188807)
+            #     SEv.append(0.9571284913404745)
+            #     SEv_13.append(0.9731239613574934)
+            #     SEv_14.append(0.9680031784963461)
 
             # 对平均温度进行判断（对水与大部分云的阴影进一步去除）
             if np.mean(LSTs) <= 285:
                 is_valid[y_modis, x_modis] = False
 
             # 对当前MODIS像元计算辐亮度
-            try:
-                cur_BTv = lst2BTs(np.mean(LSTv))
-                cur_BTs = lst2BTs(np.mean(LSTs))
-            except Exception as e:
-                print(LSTv)
-                print(LSTs)
-                cur_BTv = 0
-                cur_BTs = 0
-                print(e)
+            # try:
+            #     cur_BTv = lst2BTs(np.mean(LSTv))
+            #     cur_BTs = lst2BTs(np.mean(LSTs))
+            # except Exception as e:
+            #     print(LSTv)
+            #     print(LSTs)
+            #     cur_BTv = 0
+            #     cur_BTs = 0
+            #     print(e)
             # 原始角度
-            BT_60[y_modis, x_modis] = FVC_60[y_modis, x_modis] * cur_BTv * np.mean(SEv) + (1 - FVC_60[y_modis, x_modis]) * cur_BTs * np.mean(SEs)
+            # BT_60[y_modis, x_modis] = FVC_60[y_modis, x_modis] * cur_BTv * np.mean(SEv) + (1 - FVC_60[y_modis, x_modis]) * cur_BTs * np.mean(SEs)
             # 垂直方向
-            BT_0[y_modis, x_modis] = FVC_0[y_modis, x_modis] * cur_BTv * np.mean(SEv) + (1 - FVC_0[y_modis, x_modis]) * cur_BTs * np.mean(SEs)
+            # BT_0[y_modis, x_modis] = FVC_0[y_modis, x_modis] * cur_BTv * np.mean(SEv) + (1 - FVC_0[y_modis, x_modis]) * cur_BTs * np.mean(SEs)
 
             # 如果是云/水像元则不参与特征空间的构造，否则存入数组
-            if is_valid[y_modis, x_modis]:
-                space_data_list.append([BT_60[y_modis, x_modis], FVC_60[y_modis, x_modis]])
+            # if is_valid[y_modis, x_modis]:
+            #     space_data_list.append([BT_60[y_modis, x_modis], FVC_60[y_modis, x_modis]])
 
     print("done BT calculation")
     # </editor-fold>
 
     # <editor-fold> 建立特征空间，计算根据特征空间得到的的radiance
-    # 从数组中获取用于构建特征空间的数据，并转换为二维ndarray
-    print(len(space_data_list))
-    BT_space = [x[0] for x in space_data_list]
-    BT_space = np.asarray(BT_space)
-    BT_space = BT_space.reshape((1, BT_space.shape[0]))
-    fvc_space = [x[1] for x in space_data_list]
-    fvc_space = np.asarray(fvc_space)
-    fvc_space = fvc_space.reshape((1, fvc_space.shape[0]))
 
     # 出图
     write_tiff(LSTv_all, "LSTv_all")
@@ -1395,14 +1389,10 @@ def main_hdf():
     write_tiff(SEv_aver_13, "SEv_aver_13")
     write_tiff(SEv_aver_14, "SEv_aver_14")
 
-    write_tiff(fvc_space, "FVC_space")
-    write_tiff(BT_60, "BT_60")
-    write_tiff(BT_0, "BT_0")
-    write_tiff(BT_space, "BT_space")
     write_tiff(is_valid, "is_valid")
 
     # 建立特征空间
-    main_space()
+    # main_space()
     # </editor-fold>
 
 
@@ -1434,7 +1424,7 @@ def main_calRadiance(band=12):
                     if LSTv[y, x] > 0:
                         BTv = lst2BTs(LSTv[y, x], band)
                         BT_0[y, x] = FVC_0[y, x] * BTv * SEv[y, x] + (1 - FVC_0[y, x]) * BTs * SEs[y, x]
-                        BT_60[y, x] = FVC_60[y, x] * BTv * SEv[y, x] + (1 - FVC_0[y, x]) * BTs * SEs[y, x]
+                        BT_60[y, x] = FVC_60[y, x] * BTv * SEv[y, x] + (1 - FVC_60[y, x]) * BTs * SEs[y, x]
                         continue
                 # 其他情况都不考虑
 
@@ -1474,12 +1464,12 @@ def main_space(band=12):
 
     # 垂直角度的特征空间
     k1, c1, k2, c2 = getEdges_fvc(BT_0_valid, fvc_0_valid)
-    scatter_BTs_fvc(BT_0_valid, fvc_0_valid, k1, c1, k2, c2, band, False)
+    scatter_BTs_fvc(BT_0_valid, fvc_0_valid, k1, c1, k2, c2, band, False, 0)
 
     # 生成特征空间
     k1, c1, k2, c2 = getEdges_fvc(BT_valid, fvc_valid)
     # 出图
-    scatter_BTs_fvc(BT_valid, fvc_valid, k1, c1, k2, c2, band, False)
+    scatter_BTs_fvc(BT_valid, fvc_valid, k1, c1, k2, c2, band, False, 60)
     # 计算特征空间中的顶点
     point_x, point_y = cal_vertex(k1, c1, k2, c2)
     print(point_x, point_y)
@@ -1531,6 +1521,28 @@ def main_space(band=12):
     write_tiff(LST_space_0, "LST_space_0_valid")
 
 
+def analysis_LSTsv():
+    """
+    对计算出的组分温度进行分析
+    :return:
+    """
+    _, LSTv = open_tiff("pics/LSTv_all.tif")
+    _, LSTs = open_tiff("pics/LSTs_all.tif")
+
+    # 为便于出图
+    LSTv[LSTv == 0] = -200
+    LSTs[LSTs == 0] = -100
+    diff_LSTsv = LSTs - LSTv  # 差值
+    # 去掉0值的直方图
+    display_hist(LSTv[LSTv > 0], "LSTv_all")
+    display_hist(LSTs[LSTs > 0], "LSTs_all")
+
+    diff_LSTsv[diff_LSTsv >= 100] = -100
+    diff_LSTsv[diff_LSTsv < -100] = -100
+    display_hist(diff_LSTsv[diff_LSTsv>-90], "diff_LSTsv")
+    write_tiff(diff_LSTsv, "diff_LSTsv.tif")
+
+
 def test():
     # a = np.array([[1,2,3],[4,5,6],[7,8,9]])
     # b = np.ones((3, 3)) * 0.8
@@ -1538,8 +1550,7 @@ def test():
     # fvc60 = cal_fvc_gap(a, b, 60)
     # print(fvc0)
     # print(fvc60)
-
-
+    pass
 
 
 def sensitivity_overall():
@@ -1612,20 +1623,13 @@ def sensitivity_VZA():
     fig.savefig('pics/sensitivity/boxplot_VZA60.png', dpi=400)
 
 
-
-
-
 if __name__ == '__main__':
-    test()
+    # test()
     # cal_mean_LSTvs()
     # main_hdf()
-    # main_space(14)
-    # cal_mean_LSTvs()
-    # cal_mean_SEvs()
-    # display_LUT()
-    # sensitivity_VZA()
-    # display_lines_0_60()
+    main_space(10)
     # display_FVCdiff()
+    # analysis_LSTsv()
 
     # for i in range(10, 15):
     #     main_calRadiance(i)

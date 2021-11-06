@@ -66,7 +66,7 @@ def cal_BTs(Ts, band):
     """
     sum_up = 0
     sum_down = 0
-    fileName = "data/SRF_ASTER/rtcoef_eos_1_aster_srf_ch" + str(band) + ".txt"
+    fileName = "data/SRF_ASTER/rtcoef_eos_1_aster_srf_ch" + str(band+1) + ".txt"
     # 文件中波长单位：nm
     with open(fileName, 'r') as file:
         lines = file.readlines()
@@ -104,8 +104,8 @@ def create_LUT(band):
             BTs_all.append(BTs)
             Ts_all.append(Ts)
             file.write(str(Ts) + "\t" + str(BTs) + "\n")
-    print(BTs_all)
-    print(Ts_all)
+    # print(BTs_all)
+    # print(Ts_all)
 
     plt.plot(Ts_all, BTs_all)
     plt.xlabel("Ts")
@@ -137,6 +137,6 @@ if __name__ == "__main__":
     # 6.594058038074137
     # BTs = cal_BTs(310)
     # print(BTs)
-    for i in range(10, 14):
+    for i in range(10, 15):
         create_LUT(i)
     # plot_L_wv()
