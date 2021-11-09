@@ -849,22 +849,22 @@ def BTs2lst(BTs, band=12):
     fileName = "SRF/LUT" + str(band) + ".txt"
     LUT = get_LUT(fileName)
     if type(BTs) == np.ndarray:
+        BTs.reshape(-1)
         shape = BTs.shape
         lst = np.zeros(shape, dtype=np.float64)
-        # TODO: 一维数组的情况
+        # 只考虑一维数组一维数组的情况
         for i in range(shape[0]):
-            for j in range(shape[1]):
-                for k in range(len(LUT)):
-                    if LUT[k] > BTs[i, j]:
-                        continue
-                    # LUT中的BTs第一次大于BTs
-                    if k == 0:
-                        lst[i, j] = 240
-                    # 实际BTs更接近后一个
-                    if BTs[i, j] * 2 > LUT[k - 1] + LUT[k]:
-                        lst[i, j] = 240 + 0.1 * k
-                    else:
-                        lst[i, j] = 240 + 0.1 * (k - 1)
+            for k in range(len(LUT)):
+                if LUT[k] > BTs[i]:
+                    continue
+                # LUT中的BTs第一次大于BTs
+                if k == 0:
+                    lst[i] = 240
+                # 实际BTs更接近后一个
+                if BTs[i] * 2 > LUT[k - 1] + LUT[k]:
+                    lst[i] = 240 + 0.1 * k
+                else:
+                    lst[i] = 240 + 0.1 * (k - 1)
     else:
         for k in range(len(LUT)):
             if LUT[k] > BTs:
@@ -956,7 +956,8 @@ def display_hist(data, title):
     plt.xlabel("difference")
     plt.ylabel("frequency")
     plt.savefig("pics/" + title + "_hist.png", dpi=400)
-    plt.show()
+    # plt.show()
+    plt.cla()
 
 
 def scatter_BTs_fvc(BT, fvc, k1, c1, k2, c2, band=12, edge=True, angle=0):
@@ -998,7 +999,8 @@ def scatter_BTs_fvc(BT, fvc, k1, c1, k2, c2, band=12, edge=True, angle=0):
     # plt.xlim(0, 1.2)
     # plt.savefig("fvc_BTs_edges.png")
     plt.savefig("pics/BTs_fvc_edges_" + str(band) + "_" + str(angle) + ".png")
-    plt.show()
+    # plt.show()
+    plt.cla()
 
 
 def display_LUT():
@@ -1033,9 +1035,9 @@ def display_lines_0_60(BT_0, BT_60, FVC_0, FVC_60, band=12):
     plt.ylabel("BT")
 
     # 存储与显示
-    plt.savefig("pics/lines_colorful_   " + str(band) + ".png", dpi=500)
-    plt.show()
-
+    plt.savefig("pics/lines_colorful_" + str(band) + ".png", dpi=500)
+    # plt.show()
+    plt.cla()
 
 def display_FVCdiff():
     """
@@ -1415,18 +1417,15 @@ def main_calRadiance(band=12):
     # 遍历每个像元，计算辐亮度
     for y in range(LSTs.shape[0]):
         for x in range(LSTs.shape[1]):
-            # 是有效像元才进行计算
-            if is_valid[y, x]:
-                # 有土壤组分
-                if LSTs[y, x] > 0:
-                    BTs = lst2BTs(LSTs[y, x], band)
-                    # 两种组分都有
-                    if LSTv[y, x] > 0:
-                        BTv = lst2BTs(LSTv[y, x], band)
-                        BT_0[y, x] = FVC_0[y, x] * BTv * SEv[y, x] + (1 - FVC_0[y, x]) * BTs * SEs[y, x]
-                        BT_60[y, x] = FVC_60[y, x] * BTv * SEv[y, x] + (1 - FVC_60[y, x]) * BTs * SEs[y, x]
-                        continue
-                # 其他情况都不考虑
+            # 是有效像元且两种组分都有才进行计算
+            if is_valid[y, x] and LSTs[y, x] > 0 and LSTv[y, x] > 0:
+                BTs = lst2BTs(LSTs[y, x], band)
+                BTv = lst2BTs(LSTv[y, x], band)
+                BT_0[y, x] = FVC_0[y, x] * BTv * SEv[y, x] + (1 - FVC_0[y, x]) * BTs * SEs[y, x]
+                BT_60[y, x] = FVC_60[y, x] * BTv * SEv[y, x] + (1 - FVC_60[y, x]) * BTs * SEs[y, x]
+                # BT_0[y, x] = FVC_0[y, x] * BTv + (1 - FVC_0[y, x]) * BTs
+                # BT_60[y, x] = FVC_60[y, x] * BTv + (1 - FVC_60[y, x]) * BTs
+            # 其他情况都不考虑
 
     write_tiff(BT_0, "BT_0_" + str(band))
     write_tiff(BT_60, "BT_60_" + str(band))
@@ -1437,6 +1436,7 @@ def main_space(band=12):
     得到模拟结果后，进行特征空间相关处理
     :return:
     """
+    print("space construction for band " + str(band))
     # 读取相关数据：某一波段的多角度辐亮度
     ds_BT, BT = open_tiff("pics/BT_60_" + str(band) + ".tif")
     ds_BT_0, BT_0 = open_tiff("pics/BT_0_" + str(band) + ".tif")
@@ -1464,12 +1464,12 @@ def main_space(band=12):
 
     # 垂直角度的特征空间
     k1, c1, k2, c2 = getEdges_fvc(BT_0_valid, fvc_0_valid)
-    scatter_BTs_fvc(BT_0_valid, fvc_0_valid, k1, c1, k2, c2, band, False, 0)
+    scatter_BTs_fvc(BT_0_valid, fvc_0_valid, k1, c1, k2, c2, band, True, 0)
 
     # 生成特征空间
     k1, c1, k2, c2 = getEdges_fvc(BT_valid, fvc_valid)
     # 出图
-    scatter_BTs_fvc(BT_valid, fvc_valid, k1, c1, k2, c2, band, False, 60)
+    scatter_BTs_fvc(BT_valid, fvc_valid, k1, c1, k2, c2, band, True, 60)
     # 计算特征空间中的顶点
     point_x, point_y = cal_vertex(k1, c1, k2, c2)
     print(point_x, point_y)
@@ -1492,33 +1492,34 @@ def main_space(band=12):
     # <editor-fold> 结果定量分析
 
     # 计算结果与模拟结果进行对比
-    display_hist(BT_0_space - BT_0_valid, "BT_diff_space_0")
+    display_hist(BT_0_space - BT_0_valid, "BT_diff_space_0_" + str(band))
     RMSE_BT_space_0 = np.sqrt(metrics.mean_squared_error(BT_0_valid, BT_0_space))
     print("RMSE_BT_space_0:\t" + str(RMSE_BT_space_0))
 
     # 原始数据与模拟结果的对比
-    display_hist(BT_0_valid - BT_valid, "BT_diff_0")
+    display_hist(BT_0_valid - BT_valid, "BT_diff_0_" + str(band))
     RMSE_BT_0 = np.sqrt(metrics.mean_squared_error(BT_valid, BT_0_valid))
     print("RMSE_BT_0:\t" + str(RMSE_BT_0))
 
     # 原始数据与特征空间结果的对比
-    display_hist(BT_0_space - BT_valid, "BT_diff_space")
+    display_hist(BT_0_space - BT_valid, "BT_diff_space_" + str(band))
     RMSE_BT_space = np.sqrt(metrics.mean_squared_error(BT_valid, BT_0_space))
     print("RMSE_BT_space:\t" + str(RMSE_BT_space))
 
     # </editor-fold>
 
     # 温度对比
-    LST = BTs2lst(BT_valid)
-    LST_0 = BTs2lst(BT_0_valid)
-    LST_space_0 = BTs2lst(BT_0_space)
+    # LST = BTs2lst(BT_valid)
+    # LST_0 = BTs2lst(BT_0_valid)
+    # LST_space_0 = BTs2lst(BT_0_space)
 
     # 出图
-    write_tiff(BT_0_space, "BT_0_space_valid")
-    write_tiff((BT_0_space-BT_0_valid), "BT_diff_0_space")
-    write_tiff(LST, "LST_valid")
-    write_tiff(LST_0, "LST_0_valid")
-    write_tiff(LST_space_0, "LST_space_0_valid")
+    # 都是一维数组，无法出图
+    # write_tiff(BT_0_space, "BT_0_space_valid_" + str(band))
+    # write_tiff((BT_0_space-BT_0_valid), "BT_diff_0_space_" + str(band))
+    # write_tiff(LST, "LST_valid_" + str(band))
+    # write_tiff(LST_0, "LST_0_valid_" + str(band))
+    # write_tiff(LST_space_0, "LST_space_0_valid_" + str(band))
 
 
 def analysis_LSTsv():
@@ -1627,9 +1628,10 @@ if __name__ == '__main__':
     # test()
     # cal_mean_LSTvs()
     # main_hdf()
-    main_space(10)
     # display_FVCdiff()
     # analysis_LSTsv()
+    # display_BTsv_diff()
 
-    # for i in range(10, 15):
-    #     main_calRadiance(i)
+    for i in range(10, 15):
+        main_calRadiance(i)
+        main_space(i)
