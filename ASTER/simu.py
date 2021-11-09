@@ -50,6 +50,7 @@ file_CI = "data/CI/CI_6.tif"
 file_LUT = "SRF/LUT12.txt"
 # 判断植被/土壤的NDVI阈值
 threshold_NDVI = 0.45
+threshold_NDVI_min = 0.3
 # ASTER图像区域
 
 # ****************************************** 文件操作 **************************************
@@ -97,8 +98,8 @@ def open_gdal(fileName):
     hdf = gdal.Open(fileName)
     # subDataset
     subdatasets = hdf.GetSubDatasets()
-    for subDataset in subdatasets:
-        print(subDataset)
+    # for subDataset in subdatasets:
+    #     print(subDataset)
     # 查看元数据
     metadata = hdf.GetMetadata()
     # print(metadata)
@@ -813,10 +814,44 @@ def cal_channelSE():
     :return:
     """
     pass
+
+
+def cal_windowLSTsv(window=5):
+    """
+    计算一定窗口大小的组分温度
+    :return:
+    """
+    _, LSTs_all = open_tiff("pics/LSTs_all.tif")
+    _, LSTv_all = open_tiff("pics/LSTv_all.tif")
+
+    # 计算5*5的窗口内的组分温度（取极值）
+    LSTs_window = np.zeros(LSTs_all.shape)
+    LSTv_window = np.zeros(LSTv_all.shape)
+    for y in range(LSTs_window.shape[0]):
+        for x in range(LSTs_window.shape[1]):
+            # 当前像元对应的窗口索引
+            minY = max(y - int(window/2), 0)
+            maxY = min(y + int((window+1)/2), LSTs_window.shape[0])
+            minX = max(x - int(window/2), 0)
+            maxX = min(x + int((window+1)/2), LSTs_window.shape[1])
+            cur_LSTs = LSTs_all[minY:maxY, minX:maxX]
+            cur_LSTv = LSTv_all[minY:maxY, minX:maxX]
+            # 计算当前窗口的组分温度极值
+            LSTs_window[y, x] = np.max(cur_LSTs)
+            if len(cur_LSTv[cur_LSTv > 0]) > 0:
+                LSTv_window[y, x] = np.min(cur_LSTv[cur_LSTv > 0])
+    write_tiff(LSTs_window, "LSTs_window")
+    write_tiff(LSTv_window, "LSTv_window")
+
+    # 组分温度差值直方图
+    diff = LSTs_window-LSTv_window
+    diff = diff[diff != 0]
+    display_hist(diff[np.abs(diff) < 50], "diff_LSTsv_window")
+
 # </editor-fold>    计算
 
 # ****************************************** 其他函数 **************************************
-# <editor-fold>
+# <editor-fold> 其他
 
 
 def lst2BTs(lst, band=12):
@@ -1039,6 +1074,7 @@ def display_lines_0_60(BT_0, BT_60, FVC_0, FVC_60, band=12):
     # plt.show()
     plt.cla()
 
+
 def display_FVCdiff():
     """
     绘制FVC差值图
@@ -1201,19 +1237,8 @@ def main_hdf():
     write_tiff(FVC_0, "FVC_0")
     print("done FVC calculation")
 
-    # 进行ASTER的像元分类，
-
-    # 用于存储植被覆盖度与辐亮度的数组
-    # BT_60_10 = np.zeros(LAI.shape, dtype=np.float64)
-    # BT_0_10 = np.zeros(LAI.shape, dtype=np.float64)
-    # BT_60_11 = np.zeros(LAI.shape, dtype=np.float64)
-    # BT_0_11 = np.zeros(LAI.shape, dtype=np.float64)
-    BT_60 = np.zeros(LAI.shape, dtype=np.float64)
-    BT_0 = np.zeros(LAI.shape, dtype=np.float64)
-    # BT_60_13 = np.zeros(LAI.shape, dtype=np.float64)
-    # BT_0_13 = np.zeros(LAI.shape, dtype=np.float64)
-    # BT_60_14 = np.zeros(LAI.shape, dtype=np.float64)
-    # BT_0_14 = np.zeros(LAI.shape, dtype=np.float64)
+    # 进行ASTER的像元分类，计算组分温度与发射率
+    # 用于存储组分温度与组分发射率的数组
     LSTv_all = np.zeros(LAI.shape, dtype=np.float64)
     LSTs_all = np.zeros(LAI.shape, dtype=np.float64)
     SEs_aver_10 = np.zeros(LAI.shape, dtype=np.float64)
@@ -1227,18 +1252,19 @@ def main_hdf():
     SEv_aver_13 = np.zeros(LAI.shape, dtype=np.float64)
     SEv_aver_14 = np.zeros(LAI.shape, dtype=np.float64)
     # 用于存储构造特征空间的数据的列表，数据用[BT,fvc]记录
-    is_valid = np.zeros(LAI.shape, dtype=bool)
+    is_valid = np.zeros(LAI.shape, dtype=bool)                  # 是否有有效组分（无云/水体的ASTER像元）
+    is_valid_space = np.zeros(LAI.shape, dtype=bool)            # 是否用于构建特征空间
     for y_modis in range(LAI.shape[0]):         # 一行
         for x_modis in range(LAI.shape[1]):
             # 对当前MODIS像元，用于存储平均温度、发射率信息的列表
             LSTv = []
             LSTs = []
-            SEv = []
-            SEs = []
             SEv_10 = []
             SEs_10 = []
             SEv_11 = []
             SEs_11 = []
+            SEv_12 = []
+            SEs_12 = []
             SEv_13 = []
             SEs_13 = []
             SEv_14 = []
@@ -1272,21 +1298,6 @@ def main_hdf():
                             cur_red = ref_red_aster[y_aster * 6:y_aster * 6 + 5, x_aster * 6:x_aster * 6 + 5]
                             cur_nir = ref_nir_aster[y_aster * 6:y_aster * 6 + 5, x_aster * 6:x_aster * 6 + 5]
                             cur_ndvi = np.mean(cal_NDVI(cur_red, cur_nir))
-                            # 根据平均NDVI值判断是植被还是土壤
-                            if cur_ndvi > threshold_NDVI:
-                                LSTv.append(lst_aster[y_aster, x_aster])
-                                SEv_10.append(SE_10[y_aster, x_aster])
-                                SEv_11.append(SE_11[y_aster, x_aster])
-                                SEv.append(SE_12[y_aster, x_aster])
-                                SEv_13.append(SE_13[y_aster, x_aster])
-                                SEv_14.append(SE_14[y_aster, x_aster])
-                            else:
-                                LSTs.append(lst_aster[y_aster, x_aster])
-                                SEs_10.append(SE_10[y_aster, x_aster])
-                                SEs_11.append(SE_11[y_aster, x_aster])
-                                SEs.append(SE_12[y_aster, x_aster])
-                                SEs_13.append(SE_13[y_aster, x_aster])
-                                SEs_14.append(SE_14[y_aster, x_aster])
                             # 判断是否为阴影（山/云）或水
                             # 计算nir波段反射率方差
                             cur_std = np.std(cur_nir)
@@ -1297,6 +1308,21 @@ def main_hdf():
                                     (not (np.mean(cur_vis) > 0.2 and np.mean(cur_nir) > 0.2 and np.mean(cur_red) > 0.2))\
                                     and cur_std < 0.04:
                                 is_valid[y_modis, x_modis] = True
+                                # 根据平均NDVI值判断是植被还是土壤
+                                if cur_ndvi > threshold_NDVI:
+                                    LSTv.append(lst_aster[y_aster, x_aster])
+                                    SEv_10.append(SE_10[y_aster, x_aster])
+                                    SEv_11.append(SE_11[y_aster, x_aster])
+                                    SEv_12.append(SE_12[y_aster, x_aster])
+                                    SEv_13.append(SE_13[y_aster, x_aster])
+                                    SEv_14.append(SE_14[y_aster, x_aster])
+                                else:
+                                    LSTs.append(lst_aster[y_aster, x_aster])
+                                    SEs_10.append(SE_10[y_aster, x_aster])
+                                    SEs_11.append(SE_11[y_aster, x_aster])
+                                    SEs_12.append(SE_12[y_aster, x_aster])
+                                    SEs_13.append(SE_13[y_aster, x_aster])
+                                    SEs_14.append(SE_14[y_aster, x_aster])
                         # 经度不在范围内
                         else:
                             # 当前行已经匹配完了
@@ -1309,73 +1335,34 @@ def main_hdf():
                     else:
                         continue
 
+            # 存储当前像元的组分温度(极值)与组分发射率（均值）
             if len(LSTv) > 0:
                 LSTv_all[y_modis, x_modis] = np.min(LSTv)
                 SEv_aver_10[y_modis, x_modis] = np.mean(SEv_10)
                 SEv_aver_11[y_modis, x_modis] = np.mean(SEv_11)
-                SEv_aver_12[y_modis, x_modis] = np.mean(SEv)
+                SEv_aver_12[y_modis, x_modis] = np.mean(SEv_12)
                 SEv_aver_13[y_modis, x_modis] = np.mean(SEv_13)
                 SEv_aver_14[y_modis, x_modis] = np.mean(SEv_14)
             if len(LSTs) > 0:
                 LSTs_all[y_modis, x_modis] = np.max(LSTs)
                 SEs_aver_10[y_modis, x_modis] = np.mean(SEs_10)
                 SEs_aver_11[y_modis, x_modis] = np.mean(SEs_11)
-                SEs_aver_12[y_modis, x_modis] = np.mean(SEs)
+                SEs_aver_12[y_modis, x_modis] = np.mean(SEs_12)
                 SEs_aver_13[y_modis, x_modis] = np.mean(SEs_13)
                 SEs_aver_14[y_modis, x_modis] = np.mean(SEs_14)
 
-            # # 全图没找到合适的ASTER像元则做特殊处理
-            # if len(LSTs) == 0:
-            #     if len(LSTv) == 0:
-            #         # 一个都没有，即不在研究区内，生成特征空间时需去除
-            #         # 原本值就是0
-            #         # BT_60[y_modis, x_modis] = 0
-            #         # BT_0[y_modis, x_modis] = 0
-            #         continue
-            #     # 只是没有土壤像元，给定值
-            #     else:
-            #         LSTs.append(300)
-            #         SEs_10.append((0.9020084838201431))
-            #         SEs_11.append((0.9418323839534603))
-            #         SEs.append((0.9528154163131743))
-            #         SEs_13.append((0.9536585868379591))
-            #         SEs_14.append((0.9227660889589141))
-            # # 没有植被像元
-            # if len(LSTv) == 0:
-            #     LSTv.append(294)
-            #     SEv_10.append(0.9543614475923516)
-            #     SEv_11.append(0.9571705626188807)
-            #     SEv.append(0.9571284913404745)
-            #     SEv_13.append(0.9731239613574934)
-            #     SEv_14.append(0.9680031784963461)
-
+            # 记录像元有效性
             # 对平均温度进行判断（对水与大部分云的阴影进一步去除）
-            if np.mean(LSTs) <= 285:
-                is_valid[y_modis, x_modis] = False
+            # if np.mean(LSTs) <= 285:
+            #     is_valid[y_modis, x_modis] = False
+            # 是无云像元且两个组分都存在才用于构建特征空间
+            if len(LSTv) > 0 and len(LSTs) > 0:
+                is_valid_space[y_modis, x_modis] = True
 
-            # 对当前MODIS像元计算辐亮度
-            # try:
-            #     cur_BTv = lst2BTs(np.mean(LSTv))
-            #     cur_BTs = lst2BTs(np.mean(LSTs))
-            # except Exception as e:
-            #     print(LSTv)
-            #     print(LSTs)
-            #     cur_BTv = 0
-            #     cur_BTs = 0
-            #     print(e)
-            # 原始角度
-            # BT_60[y_modis, x_modis] = FVC_60[y_modis, x_modis] * cur_BTv * np.mean(SEv) + (1 - FVC_60[y_modis, x_modis]) * cur_BTs * np.mean(SEs)
-            # 垂直方向
-            # BT_0[y_modis, x_modis] = FVC_0[y_modis, x_modis] * cur_BTv * np.mean(SEv) + (1 - FVC_0[y_modis, x_modis]) * cur_BTs * np.mean(SEs)
-
-            # 如果是云/水像元则不参与特征空间的构造，否则存入数组
-            # if is_valid[y_modis, x_modis]:
-            #     space_data_list.append([BT_60[y_modis, x_modis], FVC_60[y_modis, x_modis]])
-
-    print("done BT calculation")
+    print("done component temperature calculation")
     # </editor-fold>
 
-    # <editor-fold> 建立特征空间，计算根据特征空间得到的的radiance
+    # <editor-fold> 中间结果输出
 
     # 出图
     write_tiff(LSTv_all, "LSTv_all")
@@ -1392,9 +1379,9 @@ def main_hdf():
     write_tiff(SEv_aver_14, "SEv_aver_14")
 
     write_tiff(is_valid, "is_valid")
+    write_tiff(is_valid_space, "is_valid_component")
 
-    # 建立特征空间
-    # main_space()
+    print(len(is_valid_space[is_valid_space is True]))
     # </editor-fold>
 
 
@@ -1403,7 +1390,10 @@ def main_calRadiance(band=12):
     从平均组分温度、组分发射率、植被覆盖度来计算辐亮度
     :return:
     """
+    print("radiance calculation for band " + str(band))
     # 打开所需数据文件
+    # _, LSTv = open_tiff("pics/LSTv_window.tif")
+    # _, LSTs = open_tiff("pics/LSTs_window.tif")
     _, LSTv = open_tiff("pics/LSTv_all.tif")
     _, LSTs = open_tiff("pics/LSTs_all.tif")
     _, SEs = open_tiff("pics/SEs_aver_" + str(band) + ".tif")
@@ -1423,9 +1413,15 @@ def main_calRadiance(band=12):
                 BTv = lst2BTs(LSTv[y, x], band)
                 BT_0[y, x] = FVC_0[y, x] * BTv * SEv[y, x] + (1 - FVC_0[y, x]) * BTs * SEs[y, x]
                 BT_60[y, x] = FVC_60[y, x] * BTv * SEv[y, x] + (1 - FVC_60[y, x]) * BTs * SEs[y, x]
+                if BT_60[y,x] == 0 and BT_0[y, x] != 0:
+                    print(BT_0[y,x])
+                    print(BTs, BTv, FVC_0[y, x], FVC_60[y, x], SEv[y, x], SEs[y, x])
                 # BT_0[y, x] = FVC_0[y, x] * BTv + (1 - FVC_0[y, x]) * BTs
                 # BT_60[y, x] = FVC_60[y, x] * BTv + (1 - FVC_60[y, x]) * BTs
             # 其他情况都不考虑
+
+    print(np.shape(BT_0[BT_0 > 0]))
+    print(np.shape(BT_60[BT_60 > 0]))
 
     write_tiff(BT_0, "BT_0_" + str(band))
     write_tiff(BT_60, "BT_60_" + str(band))
@@ -1453,6 +1449,10 @@ def main_space(band=12):
     fvc_valid = fvc_valid[fvc_valid > 0]
     fvc_0_valid = (fvc_0 * is_valid)[BT_0 > 0]
     fvc_0_valid = fvc_0_valid[fvc_0_valid > 0]
+    print(BT_valid.shape)
+    print(BT_0_valid.shape)
+    print(fvc_valid.shape)
+    print(fvc_0_valid.shape)
 
     # 0-60图绘制
     display_lines_0_60(BT_0_valid, BT_valid, fvc_0_valid, fvc_valid, band)
@@ -1627,11 +1627,12 @@ def sensitivity_VZA():
 if __name__ == '__main__':
     # test()
     # cal_mean_LSTvs()
-    # main_hdf()
+    main_hdf()
     # display_FVCdiff()
     # analysis_LSTsv()
     # display_BTsv_diff()
 
-    for i in range(10, 15):
-        main_calRadiance(i)
-        main_space(i)
+    # for i in range(10, 15):
+    #     main_calRadiance(i)
+    #     main_space(i)
+    # cal_windowLSTsv()
