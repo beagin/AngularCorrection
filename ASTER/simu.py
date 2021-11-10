@@ -187,7 +187,7 @@ def cal_fvc_gap(LAI, omega, theta, G=0.5):
     :param G:
     :return:
     """
-    return 1-np.exp(-LAI * omega * G / np.cos(theta*math.pi/180))
+    return 1-np.exp(-LAI * np.sqrt(omega) * G / np.cos(theta*math.pi/180))
 
 
 def cal_ref_BRDF(SZA, VZA, iso, vol, geo):
@@ -1236,9 +1236,6 @@ def main_hdf():
     write_tiff(FVC_0, "FVC_0")
     print("done FVC calculation")
 
-    print(lst_aster.shape)
-    print(LAI.shape)
-
     # 进行ASTER的像元分类，计算组分温度与发射率
     # 用于存储组分温度与组分发射率的数组
     LSTv_all = np.zeros(LAI.shape, dtype=np.float64)
@@ -1631,7 +1628,7 @@ if __name__ == '__main__':
     # analysis_LSTsv()
     # display_BTsv_diff()
     # main_hdf()
-    cal_windowLSTsv(3)
+    # cal_windowLSTsv(3)
 
     for i in range(10, 15):
         main_calRadiance(i)
