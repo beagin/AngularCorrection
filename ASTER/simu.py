@@ -1392,15 +1392,15 @@ def main_calRadiance(band=12):
     """
     print("radiance calculation for band " + str(band))
     # 打开所需数据文件
-    # _, LSTv = open_tiff("pics/LSTv_window.tif")
-    # _, LSTs = open_tiff("pics/LSTs_window.tif")
-    _, LSTv = open_tiff("pics/LSTv_all.tif")
-    _, LSTs = open_tiff("pics/LSTs_all.tif")
+    _, LSTv = open_tiff("pics/LSTv_window.tif")
+    _, LSTs = open_tiff("pics/LSTs_window.tif")
+    # _, LSTv = open_tiff("pics/LSTv_all.tif")
+    # _, LSTs = open_tiff("pics/LSTs_all.tif")
     _, SEs = open_tiff("pics/SEs_aver_" + str(band) + ".tif")
     _, SEv = open_tiff("pics/SEv_aver_" + str(band) + ".tif")
     _, FVC_60 = open_tiff("pics/FVC.tif")
     _, FVC_0 = open_tiff("pics/FVC_0.tif")
-    _, is_valid = open_tiff("pics/is_valid.tif")
+    _, is_valid = open_tiff("pics/is_valid_component.tif")
     # 存储计算出来的两个角度辐亮度的数组
     BT_0 = np.zeros(LSTs.shape, dtype=np.float64)
     BT_60 = np.zeros(LSTs.shape, dtype=np.float64)
@@ -1438,7 +1438,7 @@ def main_space(band=12):
     ds_BT_0, BT_0 = open_tiff("pics/BT_0_" + str(band) + ".tif")
     ds_fvc, fvc = open_tiff("pics/FVC.tif")
     ds_fvc_0, fvc_0 = open_tiff("pics/FVC_0.tif")
-    ds_valid, is_valid = open_tiff("pics/is_valid.tif")
+    ds_valid, is_valid = open_tiff("pics/is_valid_component.tif")
 
     # 获取有效值（有效值转换为一维列表）
     BT_valid = (BT * is_valid)[fvc > 0]
@@ -1449,10 +1449,6 @@ def main_space(band=12):
     fvc_valid = fvc_valid[fvc_valid > 0]
     fvc_0_valid = (fvc_0 * is_valid)[BT_0 > 0]
     fvc_0_valid = fvc_0_valid[fvc_0_valid > 0]
-    print(BT_valid.shape)
-    print(BT_0_valid.shape)
-    print(fvc_valid.shape)
-    print(fvc_0_valid.shape)
 
     # 0-60图绘制
     display_lines_0_60(BT_0_valid, BT_valid, fvc_0_valid, fvc_valid, band)
@@ -1627,12 +1623,12 @@ def sensitivity_VZA():
 if __name__ == '__main__':
     # test()
     # cal_mean_LSTvs()
-    main_hdf()
+    # main_hdf()
     # display_FVCdiff()
     # analysis_LSTsv()
     # display_BTsv_diff()
+    cal_windowLSTsv()
 
-    # for i in range(10, 15):
-    #     main_calRadiance(i)
-    #     main_space(i)
-    # cal_windowLSTsv()
+    for i in range(10, 15):
+        main_calRadiance(i)
+        main_space(i)
