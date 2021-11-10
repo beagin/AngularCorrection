@@ -16,18 +16,15 @@ import random
 
 # ****************************************** 一些声明 **************************************
 # ASTER
-# 0906
-file_LST_ASTER_tiff = "data/ASTER/AST_08_00309042019034740_20210822003637_24184.SurfaceKineticTemperature.KineticTemperature.tif"
-# file_LST_ASTER_hdf = "data/ASTER/AST_08_00309042019034740_20210822021707_8909.hdf"
-# file_refl_ASTER = "data/ASTER/AST_07_00309042019034740_20210822003647_8266.hdf"
-# 0828
-# file_LST_ASTER_hdf = "data/ASTER/AST_08_00308282019034132_20210825125717_3112.hdf"
-# file_refl_ASTER = "data/ASTER/AST_07_00308282019034132_20210825125751_31909.hdf"
-file_LST_ASTER_hdf = "data/ASTER/AST_08_00308252019030937_20211025205719_32091.hdf"
-# file_LST_ASTER_hdf = "data/ASTER/AST_08_00308252019030844_20211025205749_4200.hdf"
-file_refl_ASTER = "data/ASTER/AST_07_00308252019030937_20211025201308_7969.hdf"
-# file_refl_ASTER = "data/ASTER/AST_07_00308252019030844_20211025201358_16022.hdf"
-file_SE_ASTER = "data/ASTER/AST_05_00308252019030937_20211101075428_23019.hdf"
+# 2327
+# file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032327_20211109202424_8804.hdf"
+# file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032327_20211109044429_8561.hdf"
+# file_SE_ASTER = "data/ASTER/AST_05_00307062019032327_20211109202540_19729.hdf"
+# 2318
+file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032318_20211109202424_8809.hdf"
+file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032318_20211109044429_8560.hdf"
+file_SE_ASTER = "data/ASTER/AST_05_00307062019032318_20211109202540_19735.hdf"
+
 # MOD09
 file_MOD09_1 = "data/MODIS/MOD09GA.sur_refl_b01_1.tif"
 file_MOD09_2 = "data/MODIS/MOD09GA.sur_refl_b02_1.tif"
@@ -35,17 +32,10 @@ file_MOD09_SZA = "data/MODIS/MOD09GA.SolarZenith_1.tif"
 file_MOD09_SAA = "data/MODIS/MOD09GA.SolarAzimuth_1.tif"
 file_MOD09_VZA = "data/MODIS/MOD09GA.SensorZenith_1.tif"
 # MOD15
-file_MOD15 = "data/MODIS/LAI_2019233h26v4.Lai_500m.tif"
-# MCD43A1
-file_MCD43A1_B1_1 = "data/MODIS/MCD43A1.BRDF_Albedo_Parameters_Band1.Num_Parameters_01.tif"
-file_MCD43A1_B1_2 = "data/MODIS/MCD43A1.BRDF_Albedo_Parameters_Band1.Num_Parameters_02.tif"
-file_MCD43A1_B1_3 = "data/MODIS/MCD43A1.BRDF_Albedo_Parameters_Band1.Num_Parameters_03.tif"
-file_MCD43A1_B2_1 = "data/MODIS/MCD43A1.BRDF_Albedo_Parameters_Band2.Num_Parameters_01.tif"
-file_MCD43A1_B2_2 = "data/MODIS/MCD43A1.BRDF_Albedo_Parameters_Band2.Num_Parameters_02.tif"
-file_MCD43A1_B2_3 = "data/MODIS/MCD43A1.BRDF_Albedo_Parameters_Band2.Num_Parameters_03.tif"
+file_MOD15 = "data/MODIS/LAI_2019185h26v4.Lai_500m.tif"
+
 # 聚集指数
-# DOY233 即 233-240
-file_CI = "data/CI/CI_6.tif"
+file_CI = "data/CI/CI_2019185.tif"
 # 查找表
 file_LUT = "SRF/LUT12.txt"
 # 判断植被/土壤的NDVI阈值
@@ -541,6 +531,10 @@ def getEdges_fvc(BT: np.ndarray, fvc: np.ndarray):
     :return:
     """
     print("func get edges")
+    # 去掉FVC过大的值
+    BT = BT[fvc < 0.995]
+    fvc = fvc[fvc < 0.995]
+
     # average and standard deviation of all lsts
     BT_aver = BT.mean()
     BT_std = np.std(BT)
@@ -552,7 +546,7 @@ def getEdges_fvc(BT: np.ndarray, fvc: np.ndarray):
     # divide the FVC into intervals, 10 * 8 subintervals
     interval_num = 10
     subinterval_num = 8
-    # do the statics
+    # 划分至
     BTs = [[[] for j in range(subinterval_num)] for i in range(interval_num)]
     for i in range(BT.shape[0]):
         # 去除异常值
@@ -1174,6 +1168,9 @@ def main_hdf():
     # CI
     ds_CI, CI = open_tiff(file_CI)
 
+    print(CI.shape)
+    print(LAI.shape)
+
     # </editor-fold>
 
     # <editor-fold> 预处理：scale，裁剪等
@@ -1182,13 +1179,12 @@ def main_hdf():
     maxLat_ASTER = np.max(lat_aster)
     minLon_ASTER = np.min(lon_aster)
     maxLon_ASTER = np.max(lon_aster)
-    print(minLat_ASTER, minLon_ASTER, maxLat_ASTER, maxLon_ASTER)
+    # print(minLat_ASTER, minLon_ASTER, maxLat_ASTER, maxLon_ASTER)
 
     # CI
     # 计算对应的CI横纵坐标范围
     geotrans_CI = ds_CI.GetGeoTransform()
-    # print(geotrans)
-    # CI的坐标单位为m
+    # print(geotrans_CI)
     base_lon = geotrans_CI[0]
     base_lat = geotrans_CI[3]
     inter_lon = geotrans_CI[1]
@@ -1198,27 +1194,30 @@ def main_hdf():
     min_y = cal_index(base_lat, inter_lat, maxLat_ASTER)  # 这里由于索引大对应纬度小，进行调换
     max_y = cal_index(base_lat, inter_lat, minLat_ASTER)
     # print(min_x, max_x, min_y, max_y)
-    # 进而对CI数据进行裁剪
-    CI = CI[min_y - 1:max_y + 1, min_x - 1:max_x + 1] * 0.001
-    # print(CI.shape)
-    write_tiff(CI, "CI")
 
     # MODIS
     # 计算对应的MODIS横纵坐标范围
     # base为左上角点的坐标，inter为像元分辨率
     geotrans_LAI = ds_LAI.GetGeoTransform()
+    # print(geotrans_LAI)
     base_lon = geotrans_LAI[0]
     base_lat = geotrans_LAI[3]
     inter_lon = geotrans_LAI[1]
     inter_lat = geotrans_LAI[5]
-    min_x = cal_index(base_lon, inter_lon, minLon_ASTER)
-    max_x = cal_index(base_lon, inter_lon, maxLon_ASTER)
-    min_y = cal_index(base_lat, inter_lat, maxLat_ASTER)  # 这里由于索引大对应纬度小，进行调换
-    max_y = cal_index(base_lat, inter_lat, minLat_ASTER)
-    print(min_x, max_x, min_y, max_y)
-    # 进而对MODIS数据进行裁剪
-    LAI = LAI[min_y - 1:max_y + 1, min_x - 1:max_x + 1] * 0.1
-    print(LAI.shape)
+    min_x_2 = cal_index(base_lon, inter_lon, minLon_ASTER)
+    max_x_2 = cal_index(base_lon, inter_lon, maxLon_ASTER)
+    min_y_2 = cal_index(base_lat, inter_lat, maxLat_ASTER)  # 这里由于索引大对应纬度小，进行调换
+    max_y_2 = cal_index(base_lat, inter_lat, minLat_ASTER)
+    # print(min_x_2, max_x_2, min_y_2, max_y_2)
+
+    # 可能有微小差距（1个像元）
+    max_x += ((max_x_2 - min_x_2) - (max_x - min_x))
+    max_y += ((max_y_2 - min_y_2) - (max_y - min_y))
+
+    # 对CI、LAI数据进行裁剪、输出文件
+    CI = CI[min_y - 1:max_y + 1, min_x - 1:max_x + 1] * 0.001
+    LAI = LAI[min_y_2 - 1:max_y_2 + 1, min_x_2 - 1:max_x_2 + 1] * 0.1
+    write_tiff(CI, "CI")
     write_tiff(LAI, "LAI")
 
     # LAI与CI数据应当是可以完全对应的
@@ -1236,6 +1235,9 @@ def main_hdf():
     write_tiff(FVC_60, "FVC")
     write_tiff(FVC_0, "FVC_0")
     print("done FVC calculation")
+
+    print(lst_aster.shape)
+    print(LAI.shape)
 
     # 进行ASTER的像元分类，计算组分温度与发射率
     # 用于存储组分温度与组分发射率的数组
@@ -1255,6 +1257,8 @@ def main_hdf():
     is_valid = np.zeros(LAI.shape, dtype=bool)                  # 是否有有效组分（无云/水体的ASTER像元）
     is_valid_space = np.zeros(LAI.shape, dtype=bool)            # 是否用于构建特征空间
     for y_modis in range(LAI.shape[0]):         # 一行
+        if y_modis % 10 == 0:
+            print(str(y_modis))
         for x_modis in range(LAI.shape[1]):
             # 对当前MODIS像元，用于存储平均温度、发射率信息的列表
             LSTv = []
@@ -1270,10 +1274,10 @@ def main_hdf():
             SEv_14 = []
             SEs_14 = []
             # 当前MODIS像元坐标范围
-            cur_minLon = geotrans_LAI[0] + geotrans_LAI[1] * (min_x-1+x_modis-0.5)
-            cur_maxLon = geotrans_LAI[0] + geotrans_LAI[1] * (min_x-1+x_modis+0.5)
-            cur_minLat = geotrans_LAI[3] + geotrans_LAI[5] * (min_y-1+y_modis+0.5)
-            cur_maxLat = geotrans_LAI[3] + geotrans_LAI[5] * (min_y-1+y_modis-0.5)
+            cur_minLon = geotrans_LAI[0] + geotrans_LAI[1] * (min_x_2-1+x_modis-0.5)
+            cur_maxLon = geotrans_LAI[0] + geotrans_LAI[1] * (min_x_2-1+x_modis+0.5)
+            cur_minLat = geotrans_LAI[3] + geotrans_LAI[5] * (min_y_2-1+y_modis+0.5)
+            cur_maxLat = geotrans_LAI[3] + geotrans_LAI[5] * (min_y_2-1+y_modis-0.5)
             # 找到对应的ASTER像元
             for y_aster in range(lst_aster.shape[0]):
                 # 先对该行的纬度进行判断
@@ -1381,7 +1385,7 @@ def main_hdf():
     write_tiff(is_valid, "is_valid")
     write_tiff(is_valid_space, "is_valid_component")
 
-    print(len(is_valid_space[is_valid_space is True]))
+    print(len(is_valid_space[is_valid_space == 1]))
     # </editor-fold>
 
 
@@ -1547,7 +1551,7 @@ def test():
     # fvc60 = cal_fvc_gap(a, b, 60)
     # print(fvc0)
     # print(fvc60)
-    pass
+    sds, _ = open_gdal(file_LST_ASTER_hdf)
 
 
 def sensitivity_overall():
@@ -1623,11 +1627,11 @@ def sensitivity_VZA():
 if __name__ == '__main__':
     # test()
     # cal_mean_LSTvs()
-    # main_hdf()
     # display_FVCdiff()
     # analysis_LSTsv()
     # display_BTsv_diff()
-    cal_windowLSTsv()
+    # main_hdf()
+    cal_windowLSTsv(3)
 
     for i in range(10, 15):
         main_calRadiance(i)
