@@ -187,7 +187,7 @@ def cal_fvc_gap(LAI, omega, theta, G=0.5):
     :param G:
     :return:
     """
-    return 1-np.exp(-LAI * np.sqrt(omega) * G / np.cos(theta*math.pi/180))
+    return 1-np.exp(-LAI * omega * G / np.cos(theta*math.pi/180))
 
 
 def cal_ref_BRDF(SZA, VZA, iso, vol, geo):
@@ -1627,9 +1627,9 @@ if __name__ == '__main__':
     # display_FVCdiff()
     # analysis_LSTsv()
     # display_BTsv_diff()
-    # main_hdf()
+    main_hdf()
     # cal_windowLSTsv(3)
 
-    for i in range(10, 15):
-        main_calRadiance(i)
-        main_space(i)
+    # for i in range(10, 15):
+    #     main_calRadiance(i)
+    #     main_space(i)
