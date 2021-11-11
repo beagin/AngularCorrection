@@ -21,9 +21,13 @@ import random
 # file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032327_20211109044429_8561.hdf"
 # file_SE_ASTER = "data/ASTER/AST_05_00307062019032327_20211109202540_19729.hdf"
 # 2318
-file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032318_20211109202424_8809.hdf"
-file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032318_20211109044429_8560.hdf"
-file_SE_ASTER = "data/ASTER/AST_05_00307062019032318_20211109202540_19735.hdf"
+# file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032318_20211109202424_8809.hdf"
+# file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032318_20211109044429_8560.hdf"
+# file_SE_ASTER = "data/ASTER/AST_05_00307062019032318_20211109202540_19735.hdf"
+# 2309
+file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032309_20211109202424_8812.hdf"
+file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032309_20211109044449_8628.hdf"
+file_SE_ASTER = "data/ASTER/AST_05_00307062019032309_20211109202540_19741.hdf"
 
 # MOD09
 file_MOD09_1 = "data/MODIS/MOD09GA.sur_refl_b01_1.tif"
@@ -1548,8 +1552,8 @@ def test():
     # fvc60 = cal_fvc_gap(a, b, 60)
     # print(fvc0)
     # print(fvc60)
-    sds, _ = open_gdal(file_LST_ASTER_hdf)
-
+    _, LAI = open_tiff("pics/v3.1_sqrt/LAI.tif")
+    display_hist(LAI[LAI < 5], "LAI_2")
 
 def sensitivity_overall():
     """
@@ -1628,8 +1632,8 @@ if __name__ == '__main__':
     # analysis_LSTsv()
     # display_BTsv_diff()
     main_hdf()
-    # cal_windowLSTsv(3)
+    cal_windowLSTsv(3)
 
-    # for i in range(10, 15):
-    #     main_calRadiance(i)
-    #     main_space(i)
+    for i in range(10, 15):
+        main_calRadiance(i)
+        main_space(i)
