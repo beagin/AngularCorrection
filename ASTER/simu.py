@@ -21,13 +21,13 @@ import random
 # file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032327_20211109044429_8561.hdf"
 # file_SE_ASTER = "data/ASTER/AST_05_00307062019032327_20211109202540_19729.hdf"
 # 2318
-# file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032318_20211109202424_8809.hdf"
-# file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032318_20211109044429_8560.hdf"
-# file_SE_ASTER = "data/ASTER/AST_05_00307062019032318_20211109202540_19735.hdf"
+file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032318_20211109202424_8809.hdf"
+file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032318_20211109044429_8560.hdf"
+file_SE_ASTER = "data/ASTER/AST_05_00307062019032318_20211109202540_19735.hdf"
 # 2309
-file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032309_20211109202424_8812.hdf"
-file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032309_20211109044449_8628.hdf"
-file_SE_ASTER = "data/ASTER/AST_05_00307062019032309_20211109202540_19741.hdf"
+# file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032309_20211109202424_8812.hdf"
+# file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032309_20211109044449_8628.hdf"
+# file_SE_ASTER = "data/ASTER/AST_05_00307062019032309_20211109202540_19741.hdf"
 
 # MOD09
 file_MOD09_1 = "data/MODIS/MOD09GA.sur_refl_b01_1.tif"
@@ -846,6 +846,76 @@ def cal_windowLSTsv(window=5):
     diff = diff[diff != 0]
     display_hist(diff[np.abs(diff) < 50], "diff_LSTsv_window")
 
+
+def cal_windowSEsv(window=5):
+    """
+
+    :param window:
+    :return:
+    """
+    _, SEs_10 = open_tiff("pics/SEs_aver_10.tif")
+    _, SEv_10 = open_tiff("pics/SEv_aver_10.tif")
+    _, SEs_11 = open_tiff("pics/SEs_aver_11.tif")
+    _, SEv_11 = open_tiff("pics/SEv_aver_11.tif")
+    _, SEs_12 = open_tiff("pics/SEs_aver_12.tif")
+    _, SEv_12 = open_tiff("pics/SEv_aver_12.tif")
+    _, SEs_13 = open_tiff("pics/SEs_aver_13.tif")
+    _, SEv_13 = open_tiff("pics/SEv_aver_13.tif")
+    _, SEs_14 = open_tiff("pics/SEs_aver_14.tif")
+    _, SEv_14 = open_tiff("pics/SEv_aver_14.tif")
+
+    # 计算5*5的窗口内的组分温度（取极值）
+    SEs_10_window = np.zeros(SEv_10.shape)
+    SEv_10_window = np.zeros(SEv_10.shape)
+    SEs_11_window = np.zeros(SEv_10.shape)
+    SEv_11_window = np.zeros(SEv_10.shape)
+    SEs_12_window = np.zeros(SEv_10.shape)
+    SEv_12_window = np.zeros(SEv_10.shape)
+    SEs_13_window = np.zeros(SEv_10.shape)
+    SEv_13_window = np.zeros(SEv_10.shape)
+    SEs_14_window = np.zeros(SEv_10.shape)
+    SEv_14_window = np.zeros(SEv_10.shape)
+    for y in range(SEv_10.shape[0]):
+        for x in range(SEv_10.shape[1]):
+            # 当前像元对应的窗口索引
+            minY = max(y - int(window / 2), 0)
+            maxY = min(y + int((window + 1) / 2), SEv_10.shape[0])
+            minX = max(x - int(window / 2), 0)
+            maxX = min(x + int((window + 1) / 2), SEv_10.shape[1])
+            cur_SEs_10 = SEs_10[minY:maxY, minX:maxX]
+            cur_SEv_10 = SEv_10[minY:maxY, minX:maxX]
+            cur_SEs_11 = SEs_11[minY:maxY, minX:maxX]
+            cur_SEv_11 = SEv_11[minY:maxY, minX:maxX]
+            cur_SEs_12 = SEs_12[minY:maxY, minX:maxX]
+            cur_SEv_12 = SEv_12[minY:maxY, minX:maxX]
+            cur_SEs_13 = SEs_13[minY:maxY, minX:maxX]
+            cur_SEv_13 = SEv_13[minY:maxY, minX:maxX]
+            cur_SEs_14 = SEs_14[minY:maxY, minX:maxX]
+            cur_SEv_14 = SEv_14[minY:maxY, minX:maxX]
+            # 计算均值
+            SEs_10_window[y, x] = np.mean(cur_SEs_10[cur_SEs_10 > 0])
+            SEv_10_window[y, x] = np.mean(cur_SEv_10[cur_SEv_10 > 0])
+            SEs_11_window[y, x] = np.mean(cur_SEs_11[cur_SEs_11 > 0])
+            SEv_11_window[y, x] = np.mean(cur_SEv_11[cur_SEv_11 > 0])
+            SEs_12_window[y, x] = np.mean(cur_SEs_12[cur_SEs_12 > 0])
+            SEv_12_window[y, x] = np.mean(cur_SEv_12[cur_SEv_12 > 0])
+            SEs_13_window[y, x] = np.mean(cur_SEs_13[cur_SEs_13 > 0])
+            SEv_13_window[y, x] = np.mean(cur_SEv_13[cur_SEv_13 > 0])
+            SEs_14_window[y, x] = np.mean(cur_SEs_14[cur_SEs_14 > 0])
+            SEv_14_window[y, x] = np.mean(cur_SEv_14[cur_SEv_14 > 0])
+
+    write_tiff(SEs_10_window, "SEs_window_10")
+    write_tiff(SEv_10_window, "SEv_window_10")
+    write_tiff(SEs_11_window, "SEs_window_11")
+    write_tiff(SEv_11_window, "SEv_window_11")
+    write_tiff(SEs_12_window, "SEs_window_12")
+    write_tiff(SEv_12_window, "SEv_window_12")
+    write_tiff(SEs_13_window, "SEs_window_13")
+    write_tiff(SEv_13_window, "SEv_window_13")
+    write_tiff(SEs_14_window, "SEs_window_14")
+    write_tiff(SEv_14_window, "SEv_window_14")
+
+
 # </editor-fold>    计算
 
 # ****************************************** 其他函数 **************************************
@@ -1259,7 +1329,7 @@ def main_hdf():
     is_valid_space = np.zeros(LAI.shape, dtype=bool)            # 是否用于构建特征空间
     for y_modis in range(LAI.shape[0]):         # 一行
         if y_modis % 10 == 0:
-            print(str(y_modis))
+            print(str(y_modis) + " rows")
         for x_modis in range(LAI.shape[1]):
             # 对当前MODIS像元，用于存储平均温度、发射率信息的列表
             LSTv = []
@@ -1308,10 +1378,10 @@ def main_hdf():
                             cur_std = np.std(cur_nir)
                             # print(cur_std)
                             # 针对ASTER三个波段反射率、nir波段反射率方差进行筛选
-                            # if (not (np.mean(cur_vis) < 0.1 and np.mean(cur_nir) < 0.15 and np.mean(cur_red) < 0.1)) and \
-                            if (not (np.mean(cur_vis) < 0.1 and np.mean(cur_nir) < 0.19 and np.mean(cur_red) < 0.1)) and \
-                                    (not (np.mean(cur_vis) > 0.2 and np.mean(cur_nir) > 0.2 and np.mean(cur_red) > 0.2))\
-                                    and cur_std < 0.04:
+                            # 去除水体、阴影、云、FVC异常值（来自CI、LAI的异常像元）
+                            if (not (np.mean(cur_vis) < 0.2 and np.mean(cur_nir) < 0.2 and np.mean(cur_red) < 0.2)) and \
+                                    (not (np.mean(cur_vis) > 0.3 and np.mean(cur_nir) > 0.3 and np.mean(cur_red) > 0.3))\
+                                    and cur_std < 0.05 and FVC_60[y_modis, x_modis] > 0 and FVC_0[y_modis, x_modis] < 0.95:
                                 is_valid[y_modis, x_modis] = True
                                 # 根据平均NDVI值判断是植被还是土壤
                                 if cur_ndvi > threshold_NDVI:
@@ -1321,7 +1391,7 @@ def main_hdf():
                                     SEv_12.append(SE_12[y_aster, x_aster])
                                     SEv_13.append(SE_13[y_aster, x_aster])
                                     SEv_14.append(SE_14[y_aster, x_aster])
-                                else:
+                                elif cur_ndvi < threshold_NDVI_min:
                                     LSTs.append(lst_aster[y_aster, x_aster])
                                     SEs_10.append(SE_10[y_aster, x_aster])
                                     SEs_11.append(SE_11[y_aster, x_aster])
@@ -1401,11 +1471,11 @@ def main_calRadiance(band=12):
     _, LSTs = open_tiff("pics/LSTs_window.tif")
     # _, LSTv = open_tiff("pics/LSTv_all.tif")
     # _, LSTs = open_tiff("pics/LSTs_all.tif")
-    _, SEs = open_tiff("pics/SEs_aver_" + str(band) + ".tif")
-    _, SEv = open_tiff("pics/SEv_aver_" + str(band) + ".tif")
+    _, SEs = open_tiff("pics/SEs_window_" + str(band) + ".tif")
+    _, SEv = open_tiff("pics/SEv_window_" + str(band) + ".tif")
     _, FVC_60 = open_tiff("pics/FVC.tif")
     _, FVC_0 = open_tiff("pics/FVC_0.tif")
-    _, is_valid = open_tiff("pics/is_valid_component.tif")
+    _, is_valid = open_tiff("pics/is_valid.tif")
     # 存储计算出来的两个角度辐亮度的数组
     BT_0 = np.zeros(LSTs.shape, dtype=np.float64)
     BT_60 = np.zeros(LSTs.shape, dtype=np.float64)
@@ -1443,7 +1513,7 @@ def main_space(band=12):
     ds_BT_0, BT_0 = open_tiff("pics/BT_0_" + str(band) + ".tif")
     ds_fvc, fvc = open_tiff("pics/FVC.tif")
     ds_fvc_0, fvc_0 = open_tiff("pics/FVC_0.tif")
-    ds_valid, is_valid = open_tiff("pics/is_valid_component.tif")
+    ds_valid, is_valid = open_tiff("pics/is_valid.tif")
 
     # 获取有效值（有效值转换为一维列表）
     BT_valid = (BT * is_valid)[fvc > 0]
@@ -1552,8 +1622,9 @@ def test():
     # fvc60 = cal_fvc_gap(a, b, 60)
     # print(fvc0)
     # print(fvc60)
-    _, LAI = open_tiff("pics/v3.1_sqrt/LAI.tif")
+    _, LAI = open_tiff("pics/v2.3_window/LAI.tif")
     display_hist(LAI[LAI < 5], "LAI_2")
+
 
 def sensitivity_overall():
     """
@@ -1633,6 +1704,7 @@ if __name__ == '__main__':
     # display_BTsv_diff()
     main_hdf()
     cal_windowLSTsv(3)
+    cal_windowSEsv(3)
 
     for i in range(10, 15):
         main_calRadiance(i)
