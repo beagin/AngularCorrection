@@ -21,13 +21,13 @@ import random
 # file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032327_20211109044429_8561.hdf"
 # file_SE_ASTER = "data/ASTER/AST_05_00307062019032327_20211109202540_19729.hdf"
 # 2318
-file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032318_20211109202424_8809.hdf"
-file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032318_20211109044429_8560.hdf"
-file_SE_ASTER = "data/ASTER/AST_05_00307062019032318_20211109202540_19735.hdf"
+# file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032318_20211109202424_8809.hdf"
+# file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032318_20211109044429_8560.hdf"
+# file_SE_ASTER = "data/ASTER/AST_05_00307062019032318_20211109202540_19735.hdf"
 # 2309
-# file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032309_20211109202424_8812.hdf"
-# file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032309_20211109044449_8628.hdf"
-# file_SE_ASTER = "data/ASTER/AST_05_00307062019032309_20211109202540_19741.hdf"
+file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032309_20211109202424_8812.hdf"
+file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032309_20211109044449_8628.hdf"
+file_SE_ASTER = "data/ASTER/AST_05_00307062019032309_20211109202540_19741.hdf"
 
 # MOD09
 file_MOD09_1 = "data/MODIS/MOD09GA.sur_refl_b01_1.tif"
@@ -1097,7 +1097,7 @@ def scatter_BTs_fvc(BT, fvc, k1, c1, k2, c2, band=12, edge=True, angle=0):
     plt.legend()
     plt.xlabel("FVC")
     plt.ylabel("Radiance")
-    plt.ylim(7.55, 11.3)
+    # plt.ylim(7.55, 11.3)
     # plt.ylim(np.min(BT) - 0.5, np.max(BT) + 0.5)
     # plt.xlim(0, 1.2)
     # plt.savefig("fvc_BTs_edges.png")
@@ -1536,10 +1536,10 @@ def main_space(band=12):
 
     # 倾斜方向的特征空间
     # 2318 b14的干边
-    k1, c1, _, _, _ = stats.linregress([0, 1], [11.2, 9.3])
+    # k1, c1, _, _, _ = stats.linregress([0, 1], [11.2, 9.3])
     k2 = -0.95
     c2 = 8.8
-    # k1, c1, k2, c2 = getEdges_fvc(BT_valid, fvc_valid)
+    k1, c1, k2, c2 = getEdges_fvc(BT_valid, fvc_valid)
     print(k1, c1, k2, c2)
     # 出图
     scatter_BTs_fvc(BT_valid, fvc_valid, k1, c1, k2, c2, band, True, 60)
@@ -1550,34 +1550,34 @@ def main_space(band=12):
     point_x = 6.2
     point_y = 0.1
 
-    # best_x = 0
-    # best_y = 0
-    # best_RMSE = 2
-    #
-    # # 寻找最优顶点
-    # for x in range(15, 90):
-    #     point_x = x / 10
-    #     for y in range(0, 80):
-    #         point_y = y / 10
-    #         BT_0_space = np.zeros(BT_0_valid.shape, dtype=np.float64)
-    #         for i in range(BT_0_valid.shape[0]):
-    #             # FVC过大的点直接去除
-    #             if fvc_0_valid[i] > point_x or fvc_valid[i] > point_x:
-    #                 continue
-    #             k, c = cal_params(point_y, point_x, BT_valid[i], fvc_valid[i])
-    #             BT_0_space[i] = k * fvc_0_valid[i] + c
-    #         RMSE_BT_space_0 = np.sqrt(metrics.mean_squared_error(BT_0_valid, BT_0_space))
-    #         # 根据fvc_0与特征空间计算垂直方向辐亮度
-    #         if RMSE_BT_space_0 < best_RMSE:
-    #             best_x = point_x
-    #             best_y = point_y
-    #             best_RMSE = RMSE_BT_space_0
+    # 寻找最优顶点
+    best_x = 0
+    best_y = 0
+    best_RMSE = 2
 
-    # print("best x: " + str(best_x))
-    # print("best y: " + str(best_y))
-    # print("best RMSE: " + str(best_RMSE))
-    # point_x = best_x
-    # point_y = best_y
+    for x in range(15, 90):
+        point_x = x / 10
+        for y in range(0, 80):
+            point_y = y / 10
+            BT_0_space = np.zeros(BT_0_valid.shape, dtype=np.float64)
+            for i in range(BT_0_valid.shape[0]):
+                # FVC过大的点直接去除
+                if fvc_0_valid[i] > point_x or fvc_valid[i] > point_x:
+                    continue
+                k, c = cal_params(point_y, point_x, BT_valid[i], fvc_valid[i])
+                BT_0_space[i] = k * fvc_0_valid[i] + c
+            RMSE_BT_space_0 = np.sqrt(metrics.mean_squared_error(BT_0_valid, BT_0_space))
+            # 根据fvc_0与特征空间计算垂直方向辐亮度
+            if RMSE_BT_space_0 < best_RMSE:
+                best_x = point_x
+                best_y = point_y
+                best_RMSE = RMSE_BT_space_0
+
+    print("best x: " + str(best_x))
+    print("best y: " + str(best_y))
+    print("best RMSE: " + str(best_RMSE))
+    point_x = best_x
+    point_y = best_y
 
     BT_0_space = np.zeros(BT_0_valid.shape, dtype=np.float64)
     for i in range(BT_0_valid.shape[0]):
@@ -1591,31 +1591,31 @@ def main_space(band=12):
 
     # <editor-fold> 结果定量分析
     RMSE_BT_space_0 = np.sqrt(metrics.mean_squared_error(BT_0_valid, BT_0_space))
-    display_hist(BT_0_space - BT_0_valid, "BT_diff_space_0_" + str(band))
-    print("RMSE_BT_space_0:\t\t" + str(RMSE_BT_space_0))
+    display_hist(BT_0_space - BT_0_valid, "Radiance_diff_space_0_" + str(band))
+    print("RMSE_Radiance_space_0:\t\t" + str(RMSE_BT_space_0))
     # 原始数据与模拟结果的对比
-    display_hist(BT_0_valid - BT_valid, "BT_diff_0_" + str(band))
+    display_hist(BT_0_valid - BT_valid, "Radiance_diff_0_" + str(band))
     RMSE_BT_0 = np.sqrt(metrics.mean_squared_error(BT_valid, BT_0_valid))
-    print("RMSE_BT_0:\t\t" + str(RMSE_BT_0))
+    print("RMSE_Radiance_0:\t\t" + str(RMSE_BT_0))
 
     # 原始数据与特征空间结果的对比【不需要】
-    display_hist(BT_0_space - BT_valid, "BT_diff_space_" + str(band))
+    display_hist(BT_0_space - BT_valid, "Radiance_diff_space_" + str(band))
     RMSE_BT_space = np.sqrt(metrics.mean_squared_error(BT_valid, BT_0_space))
-    print("RMSE_BT_space:\t\t" + str(RMSE_BT_space))
+    print("RMSE_Radiance_space:\t\t" + str(RMSE_BT_space))
 
     # 温度对比
     LST = BTs2lst(BT_valid)
     LST_0 = BTs2lst(BT_0_valid)
     LST_space_0 = BTs2lst(BT_0_space)
-    display_hist(LST_space_0 - LST_0, "LST_diff_space_0_" + str(band))
+    display_hist(LST_space_0 - LST_0, "BT_diff_space_0_" + str(band))
     RMSE_LST_space_0 = np.sqrt(metrics.mean_squared_error(LST_space_0, LST_0))
-    print("RMSE_LST_space_0:\t" + str(RMSE_LST_space_0))
-    display_hist(LST_0 - LST, "LST_diff_0_" + str(band))
+    print("RMSE_BT_space_0:\t" + str(RMSE_LST_space_0))
+    display_hist(LST_0 - LST, "BT_diff_0_" + str(band))
     RMSE_LST_0 = np.sqrt(metrics.mean_squared_error(LST_0, LST))
-    print("RMSE_LST_0:\t\t" + str(RMSE_LST_0))
-    display_hist(LST_space_0 - LST, "LST_diff_space_" + str(band))
+    print("RMSE_BT_0:\t\t" + str(RMSE_LST_0))
+    display_hist(LST_space_0 - LST, "BT_diff_space_" + str(band))
     RMSE_LST_space = np.sqrt(metrics.mean_squared_error(LST_space_0, LST))
-    print("RMSE_LST_space:\t\t" + str(RMSE_LST_space))
+    print("RMSE_BT_space:\t\t" + str(RMSE_LST_space))
     # </editor-fold>
 
     # 出图
@@ -1736,10 +1736,10 @@ if __name__ == '__main__':
     # display_FVCdiff()
     # analysis_LSTsv()
     # display_BTsv_diff()
-    # main_hdf()
-    # cal_windowLSTsv(7)
-    # cal_windowSEsv(7)
+    main_hdf()
+    cal_windowLSTsv(7)
+    cal_windowSEsv(7)
 
-    for i in range(14, 15):
-        # main_calRadiance(i)
+    for i in range(10, 14):
+        main_calRadiance(i)
         main_space(i)
