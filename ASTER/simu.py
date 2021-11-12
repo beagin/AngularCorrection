@@ -1055,7 +1055,7 @@ def display(data, title, cmap=None):
 def display_hist(data, title):
     data = data.reshape(-1)
     # print(data.shape)
-    plt.hist(data, bins=100, density=True)
+    plt.hist(data, bins=30, density=True)
     plt.xlabel("difference")
     plt.ylabel("frequency")
     plt.savefig("pics/" + title + "_hist.png", dpi=400)
@@ -1547,47 +1547,50 @@ def main_space(band=12):
     point_x, point_y = cal_vertex(k1, c1, k2, c2)
     print(point_x, point_y)
 
-    point_x = 5.1
-    point_y = 4.3
+    point_x = 6.2
+    point_y = 0.1
 
-    best_x = 0
-    best_y = 0
-    best_RMSE = 2
+    # best_x = 0
+    # best_y = 0
+    # best_RMSE = 2
+    #
+    # # 寻找最优顶点
+    # for x in range(15, 90):
+    #     point_x = x / 10
+    #     for y in range(0, 80):
+    #         point_y = y / 10
+    #         BT_0_space = np.zeros(BT_0_valid.shape, dtype=np.float64)
+    #         for i in range(BT_0_valid.shape[0]):
+    #             # FVC过大的点直接去除
+    #             if fvc_0_valid[i] > point_x or fvc_valid[i] > point_x:
+    #                 continue
+    #             k, c = cal_params(point_y, point_x, BT_valid[i], fvc_valid[i])
+    #             BT_0_space[i] = k * fvc_0_valid[i] + c
+    #         RMSE_BT_space_0 = np.sqrt(metrics.mean_squared_error(BT_0_valid, BT_0_space))
+    #         # 根据fvc_0与特征空间计算垂直方向辐亮度
+    #         if RMSE_BT_space_0 < best_RMSE:
+    #             best_x = point_x
+    #             best_y = point_y
+    #             best_RMSE = RMSE_BT_space_0
 
-    # 寻找最优顶点
-    for x in range(15, 90):
-        point_x = x / 10
-        for y in range(0, 80):
-            point_y = y / 10
-            # 根据fvc_0与特征空间计算垂直方向辐亮度
-            BT_0_space = np.zeros(BT_0_valid.shape, dtype=np.float64)
-            for i in range(BT_0_valid.shape[0]):
-                # FVC过大的点直接去除
-                if fvc_0_valid[i] > point_x or fvc_valid[i] > point_x:
-                    continue
-                k, c = cal_params(point_y, point_x, BT_valid[i], fvc_valid[i])
-                BT_0_space[i] = k * fvc_0_valid[i] + c
-            RMSE_BT_space_0 = np.sqrt(metrics.mean_squared_error(BT_0_valid, BT_0_space))
-            if RMSE_BT_space_0 < best_RMSE:
-                best_x = point_x
-                best_y = point_y
-                best_RMSE = RMSE_BT_space_0
+    # print("best x: " + str(best_x))
+    # print("best y: " + str(best_y))
+    # print("best RMSE: " + str(best_RMSE))
+    # point_x = best_x
+    # point_y = best_y
 
-    print("best x: " + str(best_x))
-    print("best y: " + str(best_y))
-    print("best RMSE: " + str(best_RMSE))
-
-        # BT差值大于0.5
-        # if np.abs(BT_0_space[i] - BT_valid[i]) > 0.5:
-        #     print("fvc:\t" + str(fvc_valid[i]))
-        #     print("fvc_0:\t" + str(fvc_0_valid[i]))
-        #     print("BT:\t" + str(BT_valid[i]))
-        #     print("BT_0_spcae:\t" + str(BT_0_space[i]))
+    BT_0_space = np.zeros(BT_0_valid.shape, dtype=np.float64)
+    for i in range(BT_0_valid.shape[0]):
+        # FVC过大的点直接去除
+        if fvc_0_valid[i] > point_x or fvc_valid[i] > point_x:
+            continue
+        k, c = cal_params(point_y, point_x, BT_valid[i], fvc_valid[i])
+        BT_0_space[i] = k * fvc_0_valid[i] + c
 
     # 计算结果与模拟结果进行对比
 
     # <editor-fold> 结果定量分析
-
+    RMSE_BT_space_0 = np.sqrt(metrics.mean_squared_error(BT_0_valid, BT_0_space))
     display_hist(BT_0_space - BT_0_valid, "BT_diff_space_0_" + str(band))
     print("RMSE_BT_space_0:\t\t" + str(RMSE_BT_space_0))
     # 原始数据与模拟结果的对比
@@ -1734,9 +1737,9 @@ if __name__ == '__main__':
     # analysis_LSTsv()
     # display_BTsv_diff()
     # main_hdf()
-    cal_windowLSTsv(5)
+    # cal_windowLSTsv(7)
     # cal_windowSEsv(7)
 
     for i in range(14, 15):
-        main_calRadiance(i)
+        # main_calRadiance(i)
         main_space(i)
