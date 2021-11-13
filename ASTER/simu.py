@@ -545,11 +545,10 @@ def getEdges_fvc(BT: np.ndarray, fvc: np.ndarray):
     print("BT_aver: " + str(BT_aver))
     print("BT_std: " + str(BT_std))
 
-    # TODO：需将数组都转换为一元
-
     # divide the FVC into intervals, 10 * 8 subintervals
     interval_num = 10
     subinterval_num = 8
+
     # 划分至
     BTs = [[[] for j in range(subinterval_num)] for i in range(interval_num)]
     for i in range(BT.shape[0]):
@@ -560,7 +559,7 @@ def getEdges_fvc(BT: np.ndarray, fvc: np.ndarray):
             continue
         index = int(fvc[i] * interval_num * subinterval_num)
         BTs[int(index / subinterval_num)][index % subinterval_num].append(BT[i])
-    # delete those lst below 270
+    # 第一次筛选：去除异常值
     Ts_  = [[[] for j in range(subinterval_num)] for i in range(interval_num)]
     for i in range(interval_num):
         for j in range(subinterval_num):
@@ -569,20 +568,22 @@ def getEdges_fvc(BT: np.ndarray, fvc: np.ndarray):
             # print(mean_all)
             # print(dev_all)
             for x in BTs[i][j]:
-                # LST
                 if x > mean_all + 4 * dev_all or x < mean_all - 4 * dev_all:
                     continue
-                # LST
                 Ts_[i][j].append(x)
 
-    # for each interval, get the Tmax_aver
+    # 记录每个区间的最值
     Tmax_aver = []
     Tmin_aver = []
+    # 区间对应的NDVI值
+    NDVI_list = []
+    NDVI_list = []
     for i in range(interval_num):
         # print("Ts[" + str(i) + "]")
         # max Ts of subintervals in this interval
         maxTs = []
         minTs =[]
+        # 计算每个子区间的最大最小值
         for j in range(subinterval_num):
             if len(Ts_[i][j]) > 0:
                 maxTs.append(max(Ts_[i][j]))
@@ -591,20 +592,24 @@ def getEdges_fvc(BT: np.ndarray, fvc: np.ndarray):
         # print(maxTs)
         # print("minTs:")
         # print(minTs)
-
+        # 当前区间没有值且前一区间有值，则直接用前一区间的值
+        # TODO：改这一部分，目前每一个区间都需要有有效值
         if len(maxTs) == 0 and len(Tmax_aver) > 0:
             Tmax_aver.append(Tmax_aver[-1])
+        # 对当前这一区间，筛选每个子区间的最值
         else:
             while True:
                 average_max = np.mean(maxTs)
                 dev_max = np.std(maxTs, ddof=1)
                 discard_max = False
                 # if exist one max Ts less than ..., then discard it
+                # 每个剩余的子区间值进行判断
                 for j in range(len(maxTs)):
                     if maxTs[j] < average_max - dev_max:
                         maxTs.pop(j)
                         discard_max = True
                         break
+                # 遍历了一遍都没有discard
                 if not discard_max:
                     break
             Tmax_aver.append(np.mean(maxTs))
@@ -629,11 +634,13 @@ def getEdges_fvc(BT: np.ndarray, fvc: np.ndarray):
                     break
             Tmin_aver.append(np.mean(minTs))
 
-    # print(Tmax_aver)
-    # print(Tmin_aver)
+    print(Tmax_aver)
+    print(Tmin_aver)
 
     # Tmax
-    ndvi_list = np.array([(0.5/interval_num + i /interval_num) for i in range(interval_num)])     # ndvi值（x轴）
+    ndvi_list = np.array([(0.5/interval_num + i /interval_num) for i in range(interval_num)])
+    print(ndvi_list)
+    # ndvi值（x轴）
     while True:
         # do linear regression
         k1, c1, r_value, p_value, std_err = stats.linregress(ndvi_list, np.array(Tmax_aver))
@@ -1525,20 +1532,11 @@ def main_space(band=12):
     # 0-60图绘制
     display_lines_0_60(BT_0_valid, BT_valid, fvc_0_valid, fvc_valid, band)
 
-    # 直方图验证
-    # hist, edges = np.histogram(fvc_space, 100)
-    # print(hist)
-    # print(edges)
-
     # 垂直角度的特征空间
     k1, c1, k2, c2 = getEdges_fvc(BT_0_valid, fvc_0_valid)
     scatter_BTs_fvc(BT_0_valid, fvc_0_valid, k1, c1, k2, c2, band, True, 0)
 
     # 倾斜方向的特征空间
-    # 2318 b14的干边
-    # k1, c1, _, _, _ = stats.linregress([0, 1], [11.2, 9.3])
-    k2 = -0.95
-    c2 = 8.8
     k1, c1, k2, c2 = getEdges_fvc(BT_valid, fvc_valid)
     print(k1, c1, k2, c2)
     # 出图
@@ -1547,37 +1545,34 @@ def main_space(band=12):
     point_x, point_y = cal_vertex(k1, c1, k2, c2)
     print(point_x, point_y)
 
-    point_x = 6.2
-    point_y = 0.1
-
-    # 寻找最优顶点
-    best_x = 0
-    best_y = 0
-    best_RMSE = 2
-
-    for x in range(15, 90):
-        point_x = x / 10
-        for y in range(0, 80):
-            point_y = y / 10
-            BT_0_space = np.zeros(BT_0_valid.shape, dtype=np.float64)
-            for i in range(BT_0_valid.shape[0]):
-                # FVC过大的点直接去除
-                if fvc_0_valid[i] > point_x or fvc_valid[i] > point_x:
-                    continue
-                k, c = cal_params(point_y, point_x, BT_valid[i], fvc_valid[i])
-                BT_0_space[i] = k * fvc_0_valid[i] + c
-            RMSE_BT_space_0 = np.sqrt(metrics.mean_squared_error(BT_0_valid, BT_0_space))
-            # 根据fvc_0与特征空间计算垂直方向辐亮度
-            if RMSE_BT_space_0 < best_RMSE:
-                best_x = point_x
-                best_y = point_y
-                best_RMSE = RMSE_BT_space_0
-
-    print("best x: " + str(best_x))
-    print("best y: " + str(best_y))
-    print("best RMSE: " + str(best_RMSE))
-    point_x = best_x
-    point_y = best_y
+    # # 寻找最优顶点
+    # best_x = 0
+    # best_y = 0
+    # best_RMSE = 2
+    #
+    # for x in range(15, 90):
+    #     point_x = x / 10
+    #     for y in range(-210, 80):
+    #         point_y = y / 10
+    #         BT_0_space = np.zeros(BT_0_valid.shape, dtype=np.float64)
+    #         for i in range(BT_0_valid.shape[0]):
+    #             # FVC过大的点直接去除
+    #             if fvc_0_valid[i] > point_x or fvc_valid[i] > point_x:
+    #                 continue
+    #             k, c = cal_params(point_y, point_x, BT_valid[i], fvc_valid[i])
+    #             BT_0_space[i] = k * fvc_0_valid[i] + c
+    #         RMSE_BT_space_0 = np.sqrt(metrics.mean_squared_error(BT_0_valid, BT_0_space))
+    #         # 根据fvc_0与特征空间计算垂直方向辐亮度
+    #         if RMSE_BT_space_0 < best_RMSE:
+    #             best_x = point_x
+    #             best_y = point_y
+    #             best_RMSE = RMSE_BT_space_0
+    #
+    # print("best x: " + str(best_x))
+    # print("best y: " + str(best_y))
+    # print("best RMSE: " + str(best_RMSE))
+    # point_x = best_x
+    # point_y = best_y
 
     BT_0_space = np.zeros(BT_0_valid.shape, dtype=np.float64)
     for i in range(BT_0_valid.shape[0]):
@@ -1649,15 +1644,33 @@ def analysis_LSTsv():
     write_tiff(diff_LSTsv, "diff_LSTsv.tif")
 
 
-def test():
+def test(band):
     # a = np.array([[1,2,3],[4,5,6],[7,8,9]])
     # b = np.ones((3, 3)) * 0.8
     # fvc0 = cal_fvc_gap(a, b, 0)
     # fvc60 = cal_fvc_gap(a, b, 60)
     # print(fvc0)
     # print(fvc60)
-    _, LAI = open_tiff("pics/v2.3_window/LAI.tif")
-    display_hist(LAI[LAI < 5], "LAI_2")
+    # 读取相关数据：某一波段的多角度辐亮度
+    ds_BT, BT = open_tiff("pics/BT_60_" + str(band) + ".tif")
+    ds_fvc, fvc = open_tiff("pics/FVC.tif")
+    ds_valid, is_valid = open_tiff("pics/is_valid.tif")
+
+    # 获取有效值（有效值转换为一维列表）
+    BT_valid = (BT * is_valid)[fvc > 0]
+    BT_valid = BT_valid[BT_valid > 0]
+    fvc_valid = (fvc * is_valid)[BT > 0]
+    fvc_valid = fvc_valid[fvc_valid > 0]
+
+    # 倾斜方向的特征空间
+    k1, c1, k2, c2 = getEdges_fvc(BT_valid, fvc_valid)
+    print(k1, c1, k2, c2)
+
+    # 顶点
+    point_x, point_y = cal_vertex(k1, c1, k2, c2)
+    print(point_x, point_y)
+
+    scatter_BTs_fvc(BT_valid, fvc_valid, k1, c1, k2, c2, band="10test", angle=60)
 
 
 def sensitivity_overall():
@@ -1731,15 +1744,15 @@ def sensitivity_VZA():
 
 
 if __name__ == '__main__':
-    # test()
+    # test(10)
     # cal_mean_LSTvs()
     # display_FVCdiff()
     # analysis_LSTsv()
     # display_BTsv_diff()
-    main_hdf()
-    cal_windowLSTsv(7)
-    cal_windowSEsv(7)
+    # main_hdf()
+    # cal_windowLSTsv(7)
+    # cal_windowSEsv(7)
 
-    for i in range(10, 14):
-        main_calRadiance(i)
+    for i in range(10, 15):
+    #     main_calRadiance(i)
         main_space(i)
