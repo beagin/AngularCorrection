@@ -21,13 +21,13 @@ import random
 # file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032327_20211109044429_8561.hdf"
 # file_SE_ASTER = "data/ASTER/AST_05_00307062019032327_20211109202540_19729.hdf"
 # 2318
-# file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032318_20211109202424_8809.hdf"
-# file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032318_20211109044429_8560.hdf"
-# file_SE_ASTER = "data/ASTER/AST_05_00307062019032318_20211109202540_19735.hdf"
+file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032318_20211109202424_8809.hdf"
+file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032318_20211109044429_8560.hdf"
+file_SE_ASTER = "data/ASTER/AST_05_00307062019032318_20211109202540_19735.hdf"
 # 2309
-file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032309_20211109202424_8812.hdf"
-file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032309_20211109044449_8628.hdf"
-file_SE_ASTER = "data/ASTER/AST_05_00307062019032309_20211109202540_19741.hdf"
+# file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032309_20211109202424_8812.hdf"
+# file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032309_20211109044449_8628.hdf"
+# file_SE_ASTER = "data/ASTER/AST_05_00307062019032309_20211109202540_19741.hdf"
 
 # MOD09
 file_MOD09_1 = "data/MODIS/MOD09GA.sur_refl_b01_1.tif"
@@ -547,7 +547,7 @@ def getEdges_fvc(BT: np.ndarray, fvc: np.ndarray):
 
     # divide the FVC into intervals, 10 * 8 subintervals
     interval_num = 10
-    subinterval_num = 8
+    subinterval_num = 5
 
     # 划分至
     BTs = [[[] for j in range(subinterval_num)] for i in range(interval_num)]
@@ -555,7 +555,7 @@ def getEdges_fvc(BT: np.ndarray, fvc: np.ndarray):
         # 去除异常值
         if fvc[i] <= 1e-2 or fvc[i] >= 1:
             continue
-        if BT[i] <= 0 or BT[i] >= BT_aver + 4 * BT_std or BT[i] <= BT_aver - 2.6 * BT_std:
+        if BT[i] <= 0 or BT[i] >= BT_aver + 10 * BT_std or BT[i] <= BT_aver - 4 * BT_std:
             continue
         index = int(fvc[i] * interval_num * subinterval_num)
         BTs[int(index / subinterval_num)][index % subinterval_num].append(BT[i])
@@ -634,11 +634,19 @@ def getEdges_fvc(BT: np.ndarray, fvc: np.ndarray):
                     break
             Tmin_aver.append(np.mean(minTs))
 
-    print(Tmax_aver)
-    print(Tmin_aver)
 
     # Tmax
     ndvi_list = np.array([(0.5/interval_num + i /interval_num) for i in range(interval_num)])
+    # 2309 B12
+    # ndvi_list = np.array([(0.5/interval_num + i /interval_num) for i in range(2,interval_num)])
+    # Tmax_aver.pop(0)
+    # Tmax_aver.pop(0)
+    # Tmax_aver[0] = 10.5
+    # Tmax_aver[-1] = 9.4
+    # 2309 B13
+    # Tmax_aver[0] = 10.5
+    # Tmax_aver[-1] = 9.2
+
     print(ndvi_list)
     # ndvi值（x轴）
     while True:
@@ -650,7 +658,7 @@ def getEdges_fvc(BT: np.ndarray, fvc: np.ndarray):
         # do discard
         discard_max = False
         for i in range(len(ndvi_list)):
-            if y[i] - 2 * RMSE > Tmax_aver[i] or Tmax_aver[i] > y[i] + 2 * RMSE:
+            if y[i] - 3 * RMSE > Tmax_aver[i] or Tmax_aver[i] > y[i] + 3 * RMSE:
                 Tmax_aver.pop(i)
                 ndvi_list = np.delete(ndvi_list, i)
                 discard_max = True
@@ -659,7 +667,15 @@ def getEdges_fvc(BT: np.ndarray, fvc: np.ndarray):
             break
 
     # Tmin
-    ndvi_list = np.array([(0.5/interval_num + i /interval_num) for i in range(interval_num)])     # ndvi值（x轴）
+    ndvi_list = np.array([(0.5/interval_num + i /interval_num) for i in range(interval_num)])
+    # 2309 B12
+    # Tmin_aver[0] = 8.7
+    # Tmin_aver[-1] = 8
+    # 2309 B13
+    # Tmin_aver[0] = 9
+    # Tmin_aver[-1] = 8.2
+
+    # ndvi值（x轴）
     while True:
         # do linear regression
         # print(ndvi_list)
@@ -671,13 +687,16 @@ def getEdges_fvc(BT: np.ndarray, fvc: np.ndarray):
         # do discard
         discard_min = False
         for i in range(len(ndvi_list)):
-            if y[i] + 2 * RMSE < Tmin_aver[i] or Tmin_aver[i] < y[i] - 2 * RMSE:
+            if y[i] + 3 * RMSE < Tmin_aver[i] or Tmin_aver[i] < y[i] - 3 * RMSE:
                 Tmin_aver.pop(i)
                 ndvi_list = np.delete(ndvi_list, i)
                 discard_min = True
                 break
         if not discard_min:
             break
+
+    print(Tmax_aver)
+    print(Tmin_aver)
 
     return k1, c1, k2, c2
 
@@ -1549,10 +1568,12 @@ def main_space(band=12):
     # best_x = 0
     # best_y = 0
     # best_RMSE = 2
-    #
-    # for x in range(15, 90):
+    # # 记录RMSE的文件
+    # file = open("pics/RMSEs_space" + str(band) + ".txt", 'w')
+    # file.write("fvc\tRadiance\tRMSE\n")
+    # for x in range(15, 200):
     #     point_x = x / 10
-    #     for y in range(-210, 80):
+    #     for y in [-x + delta for delta in range(-50, 200)]:
     #         point_y = y / 10
     #         BT_0_space = np.zeros(BT_0_valid.shape, dtype=np.float64)
     #         for i in range(BT_0_valid.shape[0]):
@@ -1562,12 +1583,14 @@ def main_space(band=12):
     #             k, c = cal_params(point_y, point_x, BT_valid[i], fvc_valid[i])
     #             BT_0_space[i] = k * fvc_0_valid[i] + c
     #         RMSE_BT_space_0 = np.sqrt(metrics.mean_squared_error(BT_0_valid, BT_0_space))
+    #         file.write("%f\t%f\t%f\n" % (point_x, point_y, RMSE_BT_space_0))
     #         # 根据fvc_0与特征空间计算垂直方向辐亮度
     #         if RMSE_BT_space_0 < best_RMSE:
     #             best_x = point_x
     #             best_y = point_y
     #             best_RMSE = RMSE_BT_space_0
     #
+    # file.close()
     # print("best x: " + str(best_x))
     # print("best y: " + str(best_y))
     # print("best RMSE: " + str(best_RMSE))
@@ -1582,12 +1605,11 @@ def main_space(band=12):
         k, c = cal_params(point_y, point_x, BT_valid[i], fvc_valid[i])
         BT_0_space[i] = k * fvc_0_valid[i] + c
 
-    # 计算结果与模拟结果进行对比
-
     # <editor-fold> 结果定量分析
+    # 计算结果与模拟结果进行对比
     RMSE_BT_space_0 = np.sqrt(metrics.mean_squared_error(BT_0_valid, BT_0_space))
     display_hist(BT_0_space - BT_0_valid, "Radiance_diff_space_0_" + str(band))
-    print("RMSE_Radiance_space_0:\t\t" + str(RMSE_BT_space_0))
+    print("RMSE_Radiance_space_0:\t" + str(RMSE_BT_space_0))
     # 原始数据与模拟结果的对比
     display_hist(BT_0_valid - BT_valid, "Radiance_diff_0_" + str(band))
     RMSE_BT_0 = np.sqrt(metrics.mean_squared_error(BT_valid, BT_0_valid))
@@ -1596,7 +1618,7 @@ def main_space(band=12):
     # 原始数据与特征空间结果的对比【不需要】
     display_hist(BT_0_space - BT_valid, "Radiance_diff_space_" + str(band))
     RMSE_BT_space = np.sqrt(metrics.mean_squared_error(BT_valid, BT_0_space))
-    print("RMSE_Radiance_space:\t\t" + str(RMSE_BT_space))
+    print("RMSE_Radiance_space:\t" + str(RMSE_BT_space))
 
     # 温度对比
     LST = BTs2lst(BT_valid)
@@ -1604,7 +1626,7 @@ def main_space(band=12):
     LST_space_0 = BTs2lst(BT_0_space)
     display_hist(LST_space_0 - LST_0, "BT_diff_space_0_" + str(band))
     RMSE_LST_space_0 = np.sqrt(metrics.mean_squared_error(LST_space_0, LST_0))
-    print("RMSE_BT_space_0:\t" + str(RMSE_LST_space_0))
+    print("RMSE_BT_space_0:\t\t" + str(RMSE_LST_space_0))
     display_hist(LST_0 - LST, "BT_diff_0_" + str(band))
     RMSE_LST_0 = np.sqrt(metrics.mean_squared_error(LST_0, LST))
     print("RMSE_BT_0:\t\t" + str(RMSE_LST_0))
@@ -1651,6 +1673,7 @@ def test(band):
     # fvc60 = cal_fvc_gap(a, b, 60)
     # print(fvc0)
     # print(fvc60)
+    # 测试自动提取顶点的结果
     # 读取相关数据：某一波段的多角度辐亮度
     ds_BT, BT = open_tiff("pics/BT_60_" + str(band) + ".tif")
     ds_fvc, fvc = open_tiff("pics/FVC.tif")
@@ -1744,7 +1767,7 @@ def sensitivity_VZA():
 
 
 if __name__ == '__main__':
-    # test(10)
+    # test(12)
     # cal_mean_LSTvs()
     # display_FVCdiff()
     # analysis_LSTsv()
@@ -1756,3 +1779,5 @@ if __name__ == '__main__':
     for i in range(10, 15):
     #     main_calRadiance(i)
         main_space(i)
+
+    # main_space(12)
