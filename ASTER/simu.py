@@ -978,11 +978,15 @@ def BTs2lst(BTs, band=12):
     fileName = "SRF/LUT" + str(band) + ".txt"
     LUT = get_LUT(fileName)
     if type(BTs) == np.ndarray:
-        BTs.reshape(-1)
+        original_shape = BTs.shape
+        BTs = BTs.reshape(-1)
         shape = BTs.shape
         lst = np.zeros(shape, dtype=np.float64)
-        # 只考虑一维数组一维数组的情况
+        # 只考虑一维数组的情况
         for i in range(shape[0]):
+            if BTs[i] <= 0:
+                lst[i] = 0
+                continue
             for k in range(len(LUT)):
                 if LUT[k] > BTs[i]:
                     continue
@@ -994,6 +998,8 @@ def BTs2lst(BTs, band=12):
                     lst[i] = 240 + 0.1 * k
                 else:
                     lst[i] = 240 + 0.1 * (k - 1)
+        # 转回之前的shape
+        lst = lst.reshape(original_shape)
     else:
         for k in range(len(LUT)):
             if LUT[k] > BTs:
@@ -1279,12 +1285,12 @@ def main_hdf():
     maxLat_ASTER = np.max(lat_aster)
     minLon_ASTER = np.min(lon_aster)
     maxLon_ASTER = np.max(lon_aster)
-    # print(minLat_ASTER, minLon_ASTER, maxLat_ASTER, maxLon_ASTER)
+    print(minLat_ASTER, minLon_ASTER, maxLat_ASTER, maxLon_ASTER)
 
     # CI
     # 计算对应的CI横纵坐标范围
     geotrans_CI = ds_CI.GetGeoTransform()
-    # print(geotrans_CI)
+    print(geotrans_CI)
     base_lon = geotrans_CI[0]
     base_lat = geotrans_CI[3]
     inter_lon = geotrans_CI[1]
@@ -1299,7 +1305,8 @@ def main_hdf():
     # 计算对应的MODIS横纵坐标范围
     # base为左上角点的坐标，inter为像元分辨率
     geotrans_LAI = ds_LAI.GetGeoTransform()
-    # print(geotrans_LAI)
+    print(ds_LAI.GetProjection())
+    print(geotrans_LAI)
     base_lon = geotrans_LAI[0]
     base_lat = geotrans_LAI[3]
     inter_lon = geotrans_LAI[1]
@@ -1308,7 +1315,7 @@ def main_hdf():
     max_x_2 = cal_index(base_lon, inter_lon, maxLon_ASTER)
     min_y_2 = cal_index(base_lat, inter_lat, maxLat_ASTER)  # 这里由于索引大对应纬度小，进行调换
     max_y_2 = cal_index(base_lat, inter_lat, minLat_ASTER)
-    # print(min_x_2, max_x_2, min_y_2, max_y_2)
+    print(min_x_2, max_x_2, min_y_2, max_y_2)
 
     # 可能有微小差距（1个像元）
     max_x += ((max_x_2 - min_x_2) - (max_x - min_x))
@@ -1538,15 +1545,20 @@ def main_space(band=12):
     ds_fvc_0, fvc_0 = open_tiff("pics/FVC_0.tif")
     ds_valid, is_valid = open_tiff("pics/is_valid.tif")
 
+    # 更新is_valid数据
+    is_valid[BT <= 0] =0
+    is_valid[fvc <= 0] = 0
+    is_valid[BT_0 <= 0] = 0
+    is_valid[fvc_0 <= 0] = 0
+
     # 获取有效值（有效值转换为一维列表）
-    BT_valid = (BT * is_valid)[fvc > 0]
-    BT_valid = BT_valid[BT_valid > 0]
-    BT_0_valid = (BT_0 * is_valid)[fvc_0 > 0]
-    BT_0_valid = BT_0_valid[BT_0_valid > 0]
-    fvc_valid = (fvc * is_valid)[BT > 0]
-    fvc_valid = fvc_valid[fvc_valid > 0]
-    fvc_0_valid = (fvc_0 * is_valid)[BT_0 > 0]
-    fvc_0_valid = fvc_0_valid[fvc_0_valid > 0]
+    # 构建特征空间只使用有效值
+    BT_valid = BT[is_valid > 0]
+    BT_0_valid = BT_0[is_valid > 0]
+    fvc_valid = fvc[is_valid > 0]
+    fvc_0_valid = fvc_0[is_valid > 0]
+
+    print(len(BT_0_valid))
 
     # 0-60图绘制
     display_lines_0_60(BT_0_valid, BT_valid, fvc_0_valid, fvc_valid, band)
@@ -1597,18 +1609,26 @@ def main_space(band=12):
     # point_x = best_x
     # point_y = best_y
 
-    BT_0_space = np.zeros(BT_0_valid.shape, dtype=np.float64)
-    for i in range(BT_0_valid.shape[0]):
-        # FVC过大的点直接去除
-        if fvc_0_valid[i] > point_x or fvc_valid[i] > point_x:
-            continue
-        k, c = cal_params(point_y, point_x, BT_valid[i], fvc_valid[i])
-        BT_0_space[i] = k * fvc_0_valid[i] + c
+    # 计算纠正后的Radiance
+    print(is_valid.shape)
+    BT_0_space = np.zeros(is_valid.shape, dtype=np.float64)
+    for i in range(BT_0_space.shape[0]):
+        for j in range(BT_0_space.shape[1]):
+            # 无效值直接为0
+            if is_valid[i, j] == 0:
+                BT_0_space[i, j] = 0
+                continue
+            # FVC过大的点直接去除
+            if fvc_0[i, j] > point_x or fvc[i, j] > point_x:
+                continue
+            k, c = cal_params(point_y, point_x, BT[i, j], fvc[i, j])
+            BT_0_space[i, j] = k * fvc_0[i, j] + c
 
     # <editor-fold> 结果定量分析
+    BT_0_space_valid = BT_0_space[is_valid > 0]
     # 计算结果与模拟结果进行对比
-    RMSE_BT_space_0 = np.sqrt(metrics.mean_squared_error(BT_0_valid, BT_0_space))
-    display_hist(BT_0_space - BT_0_valid, "Radiance_diff_space_0_" + str(band))
+    RMSE_BT_space_0 = np.sqrt(metrics.mean_squared_error(BT_0_valid, BT_0_space_valid))
+    display_hist(BT_0_space_valid - BT_0_valid, "Radiance_diff_space_0_" + str(band))
     print("RMSE_Radiance_space_0:\t" + str(RMSE_BT_space_0))
     # 原始数据与模拟结果的对比
     display_hist(BT_0_valid - BT_valid, "Radiance_diff_0_" + str(band))
@@ -1616,32 +1636,34 @@ def main_space(band=12):
     print("RMSE_Radiance_0:\t\t" + str(RMSE_BT_0))
 
     # 原始数据与特征空间结果的对比【不需要】
-    display_hist(BT_0_space - BT_valid, "Radiance_diff_space_" + str(band))
-    RMSE_BT_space = np.sqrt(metrics.mean_squared_error(BT_valid, BT_0_space))
+    display_hist(BT_0_space_valid - BT_valid, "Radiance_diff_space_" + str(band))
+    RMSE_BT_space = np.sqrt(metrics.mean_squared_error(BT_valid, BT_0_space_valid))
     print("RMSE_Radiance_space:\t" + str(RMSE_BT_space))
 
     # 温度对比
-    LST = BTs2lst(BT_valid)
-    LST_0 = BTs2lst(BT_0_valid)
+    LST = BTs2lst(BT)
+    LST_0 = BTs2lst(BT_0)
     LST_space_0 = BTs2lst(BT_0_space)
-    display_hist(LST_space_0 - LST_0, "BT_diff_space_0_" + str(band))
-    RMSE_LST_space_0 = np.sqrt(metrics.mean_squared_error(LST_space_0, LST_0))
+    LST_valid = LST[is_valid > 0]
+    LST_0_valid = LST_0[is_valid > 0]
+    LST_space_0_valid = LST_space_0[is_valid > 0]
+
+    display_hist(LST_space_0_valid - LST_0_valid, "BT_diff_space_0_" + str(band))
+    RMSE_LST_space_0 = np.sqrt(metrics.mean_squared_error(LST_space_0_valid, LST_0_valid))
     print("RMSE_BT_space_0:\t\t" + str(RMSE_LST_space_0))
-    display_hist(LST_0 - LST, "BT_diff_0_" + str(band))
-    RMSE_LST_0 = np.sqrt(metrics.mean_squared_error(LST_0, LST))
+    display_hist(LST_0_valid - LST_valid, "BT_diff_0_" + str(band))
+    RMSE_LST_0 = np.sqrt(metrics.mean_squared_error(LST_0_valid, LST_valid))
     print("RMSE_BT_0:\t\t" + str(RMSE_LST_0))
-    display_hist(LST_space_0 - LST, "BT_diff_space_" + str(band))
-    RMSE_LST_space = np.sqrt(metrics.mean_squared_error(LST_space_0, LST))
+    display_hist(LST_space_0_valid - LST_valid, "BT_diff_space_" + str(band))
+    RMSE_LST_space = np.sqrt(metrics.mean_squared_error(LST_space_0_valid, LST_valid))
     print("RMSE_BT_space:\t\t" + str(RMSE_LST_space))
     # </editor-fold>
 
     # 出图
-    # 都是一维数组，无法出图
-    # write_tiff(BT_0_space, "BT_0_space_valid_" + str(band))
-    # write_tiff((BT_0_space-BT_0_valid), "BT_diff_0_space_" + str(band))
-    # write_tiff(LST, "LST_valid_" + str(band))
-    # write_tiff(LST_0, "LST_0_valid_" + str(band))
-    # write_tiff(LST_space_0, "LST_space_0_valid_" + str(band))
+    write_tiff(BT_0_space, "Radiance_0_space_" + str(band))
+    write_tiff(LST, "BT_final_" + str(band))
+    write_tiff(LST_0, "BT_0_final_" + str(band))
+    write_tiff(LST_space_0, "BT_space_0_final_" + str(band))
 
 
 def analysis_LSTsv():
@@ -1666,6 +1688,32 @@ def analysis_LSTsv():
     write_tiff(diff_LSTsv, "diff_LSTsv.tif")
 
 
+def addGeoinfo(band):
+    """
+    给tif文件添加地理坐标信息
+    :return:
+    """
+    # 打开需要添加信息的文件，包括三种亮温
+    _, BT_0 = open_tiff("pics/BT_0_final_" + str(band) + ".tif")
+    _, BT_60 = open_tiff("pics/BT_final_" + str(band) + ".tif")
+    _, BT_0_space = open_tiff("pics/BT_space_0_final_" + str(band) + ".tif")
+    # 用于参考的MODIS LAI数据
+    ds_LAI, LAI = open_tiff(file_MOD15)
+    proj = ds_LAI.GetProjection()
+
+    # 写新的文件
+    driver = gdal.GetDriverByName("GTiff")
+    ds_BT_0 = driver.Create("pics/BT_0_geo_" + str(band) + ".tif", BT_0.shape[1], BT_0.shape[0], 1, gdal.GDT_Float32)
+    ds_BT_60 = driver.Create("pics/BT_60_geo_" + str(band) + ".tif", BT_0.shape[1], BT_0.shape[0], 1, gdal.GDT_Float32)
+    ds_BT_0_space = driver.Create("pics/BT_0_space_geo_" + str(band) + ".tif", BT_0.shape[1], BT_0.shape[0], 1, gdal.GDT_Float32)
+    # 手动添加坐标信息
+    # 2318
+    geoTrans = (112.0775831299942, 0.005, 0.0, 41.015, 0.0, -0.005)
+    ds_BT_0.SetProjection(proj)
+    ds_BT_0.SetGeoTransform(geoTrans)
+    ds_BT_0.GetRasterBand(1).WriteArray(BT_0)
+    del ds_BT_0
+
 def test(band):
     # a = np.array([[1,2,3],[4,5,6],[7,8,9]])
     # b = np.ones((3, 3)) * 0.8
@@ -1673,27 +1721,32 @@ def test(band):
     # fvc60 = cal_fvc_gap(a, b, 60)
     # print(fvc0)
     # print(fvc60)
-    # 测试自动提取顶点的结果
-    # 读取相关数据：某一波段的多角度辐亮度
-    ds_BT, BT = open_tiff("pics/BT_60_" + str(band) + ".tif")
-    ds_fvc, fvc = open_tiff("pics/FVC.tif")
-    ds_valid, is_valid = open_tiff("pics/is_valid.tif")
+    # # 测试自动提取顶点的结果
+    # # 读取相关数据：某一波段的多角度辐亮度
+    # ds_BT, BT = open_tiff("pics/BT_60_" + str(band) + ".tif")
+    # ds_fvc, fvc = open_tiff("pics/FVC.tif")
+    # ds_valid, is_valid = open_tiff("pics/is_valid.tif")
+    #
+    # # 获取有效值（有效值转换为一维列表）
+    # BT_valid = (BT * is_valid)[fvc > 0]
+    # BT_valid = BT_valid[BT_valid > 0]
+    # fvc_valid = (fvc * is_valid)[BT > 0]
+    # fvc_valid = fvc_valid[fvc_valid > 0]
+    #
+    # # 倾斜方向的特征空间
+    # k1, c1, k2, c2 = getEdges_fvc(BT_valid, fvc_valid)
+    # print(k1, c1, k2, c2)
+    #
+    # # 顶点
+    # point_x, point_y = cal_vertex(k1, c1, k2, c2)
+    # print(point_x, point_y)
+    #
+    # scatter_BTs_fvc(BT_valid, fvc_valid, k1, c1, k2, c2, band="10test", angle=60)
 
-    # 获取有效值（有效值转换为一维列表）
-    BT_valid = (BT * is_valid)[fvc > 0]
-    BT_valid = BT_valid[BT_valid > 0]
-    fvc_valid = (fvc * is_valid)[BT > 0]
-    fvc_valid = fvc_valid[fvc_valid > 0]
-
-    # 倾斜方向的特征空间
-    k1, c1, k2, c2 = getEdges_fvc(BT_valid, fvc_valid)
-    print(k1, c1, k2, c2)
-
-    # 顶点
-    point_x, point_y = cal_vertex(k1, c1, k2, c2)
-    print(point_x, point_y)
-
-    scatter_BTs_fvc(BT_valid, fvc_valid, k1, c1, k2, c2, band="10test", angle=60)
+    ds_LAI, LAI = open_tiff(file_MOD15)
+    proj = ds_LAI.GetProjection()
+    # 2318
+    geoTrans = (112.0775831299942, 0.005, 0.0, 41.015, 0.0, -0.005)
 
 
 def sensitivity_overall():
@@ -1772,12 +1825,13 @@ if __name__ == '__main__':
     # display_FVCdiff()
     # analysis_LSTsv()
     # display_BTsv_diff()
-    # main_hdf()
+    main_hdf()
     # cal_windowLSTsv(7)
     # cal_windowSEsv(7)
+    # addGeoinfo(10)
 
-    for i in range(10, 15):
+    # for i in range(10, 15):
     #     main_calRadiance(i)
-        main_space(i)
+    #     main_space(i)
 
     # main_space(12)
