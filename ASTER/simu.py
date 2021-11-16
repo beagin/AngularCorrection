@@ -1024,6 +1024,7 @@ def get_aster_lat_lon(sds):
     # 获取11*11的坐标数据
     lat_11 = sds[6].ReadAsArray()
     lon_11 = sds[7].ReadAsArray()
+    print(np.min(lat_11))
     # 将其转化为700*830的坐标数据
     # （每个小像元使用其对应大像元四个顶点在两个方向分别插值得到，一个大像元包含70*83个小像元）
     # 用于存储lat值的数组，700行
@@ -1038,10 +1039,10 @@ def get_aster_lat_lon(sds):
             index_y = int(y / 70)
             # 获取在大像元中的位置, 0-82
             offset_x = x - 83 * index_x
-            offset_y = y - 83 * index_y
+            offset_y = y - 70 * index_y
             # lat
             # x方向插值
-            lat_up = lat_11[index_y,index_x] + (lat_11[index_y, index_x+1] - lat_11[index_y, index_x]) * (offset_x * 2 + 1) / 166
+            lat_up = lat_11[index_y, index_x] + (lat_11[index_y, index_x+1] - lat_11[index_y, index_x]) * (offset_x * 2 + 1) / 166
             lat_down = lat_11[index_y+1, index_x] + (lat_11[index_y+1, index_x+1] - lat_11[index_y+1, index_x]) * (offset_x * 2 + 1) / 166
             # 在y方向插值
             lat[y].append(lat_up + (lat_down - lat_up) * (offset_y * 2 + 1) / 140)
@@ -1274,8 +1275,8 @@ def main_hdf():
     # CI
     ds_CI, CI = open_tiff(file_CI)
 
-    print(CI.shape)
-    print(LAI.shape)
+    # print(CI.shape)
+    # print(LAI.shape)
 
     # </editor-fold>
 
@@ -1714,6 +1715,7 @@ def addGeoinfo(band):
     ds_BT_0.GetRasterBand(1).WriteArray(BT_0)
     del ds_BT_0
 
+
 def test(band):
     # a = np.array([[1,2,3],[4,5,6],[7,8,9]])
     # b = np.ones((3, 3)) * 0.8
@@ -1825,13 +1827,15 @@ if __name__ == '__main__':
     # display_FVCdiff()
     # analysis_LSTsv()
     # display_BTsv_diff()
-    main_hdf()
+    # main_hdf()
     # cal_windowLSTsv(7)
     # cal_windowSEsv(7)
-    # addGeoinfo(10)
 
-    # for i in range(10, 15):
-    #     main_calRadiance(i)
-    #     main_space(i)
+    for i in range(10, 15):
+        main_calRadiance(i)
+        main_space(i)
+
+    for i in range(10, 15):
+        addGeoinfo(11)
 
     # main_space(12)
