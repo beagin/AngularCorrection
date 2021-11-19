@@ -637,15 +637,12 @@ def getEdges_fvc(BT: np.ndarray, fvc: np.ndarray):
 
     # Tmax
     ndvi_list = np.array([(0.5/interval_num + i /interval_num) for i in range(interval_num)])
-    # 2309 B12
-    # ndvi_list = np.array([(0.5/interval_num + i /interval_num) for i in range(2,interval_num)])
-    # Tmax_aver.pop(0)
-    # Tmax_aver.pop(0)
-    # Tmax_aver[0] = 10.5
-    # Tmax_aver[-1] = 9.4
-    # 2309 B13
-    # Tmax_aver[0] = 10.5
-    # Tmax_aver[-1] = 9.2
+    # 2318 B13
+    # Tmax_aver[0] = 11.4
+    # Tmax_aver[-1] = 9.25
+    # 2309
+    Tmax_aver[0] = 9.6
+    Tmax_aver[-1] = 8.86
 
     print(ndvi_list)
     # ndvi值（x轴）
@@ -668,12 +665,13 @@ def getEdges_fvc(BT: np.ndarray, fvc: np.ndarray):
 
     # Tmin
     ndvi_list = np.array([(0.5/interval_num + i /interval_num) for i in range(interval_num)])
-    # 2309 B12
+    # 2318 B13
+    # Tmin_aver[-1] = 7.75
+    # 2318 B14
     # Tmin_aver[0] = 8.7
-    # Tmin_aver[-1] = 8
-    # 2309 B13
-    # Tmin_aver[0] = 9
-    # Tmin_aver[-1] = 8.2
+    # 2309
+    Tmin_aver[0] = 8.0
+    Tmin_aver[-1] = 7.36
 
     # ndvi值（x轴）
     while True:
@@ -1547,7 +1545,7 @@ def main_space(band=12):
     ds_valid, is_valid = open_tiff("pics/is_valid.tif")
 
     # 更新is_valid数据
-    is_valid[BT <= 0] =0
+    is_valid[BT <= 0] = 0
     is_valid[fvc <= 0] = 0
     is_valid[BT_0 <= 0] = 0
     is_valid[fvc_0 <= 0] = 0
@@ -1558,8 +1556,6 @@ def main_space(band=12):
     BT_0_valid = BT_0[is_valid > 0]
     fvc_valid = fvc[is_valid > 0]
     fvc_0_valid = fvc_0[is_valid > 0]
-
-    print(len(BT_0_valid))
 
     # 0-60图绘制
     display_lines_0_60(BT_0_valid, BT_valid, fvc_0_valid, fvc_valid, band)
@@ -1582,8 +1578,8 @@ def main_space(band=12):
     # best_y = 0
     # best_RMSE = 2
     # # 记录RMSE的文件
-    # file = open("pics/RMSEs_space" + str(band) + ".txt", 'w')
-    # file.write("fvc\tRadiance\tRMSE\n")
+    # # file = open("pics/RMSEs_space" + str(band) + ".txt", 'w')
+    # # file.write("fvc\tRadiance\tRMSE\n")
     # for x in range(15, 200):
     #     point_x = x / 10
     #     for y in [-x + delta for delta in range(-50, 200)]:
@@ -1596,14 +1592,14 @@ def main_space(band=12):
     #             k, c = cal_params(point_y, point_x, BT_valid[i], fvc_valid[i])
     #             BT_0_space[i] = k * fvc_0_valid[i] + c
     #         RMSE_BT_space_0 = np.sqrt(metrics.mean_squared_error(BT_0_valid, BT_0_space))
-    #         file.write("%f\t%f\t%f\n" % (point_x, point_y, RMSE_BT_space_0))
+    #         # file.write("%f\t%f\t%f\n" % (point_x, point_y, RMSE_BT_space_0))
     #         # 根据fvc_0与特征空间计算垂直方向辐亮度
     #         if RMSE_BT_space_0 < best_RMSE:
     #             best_x = point_x
     #             best_y = point_y
     #             best_RMSE = RMSE_BT_space_0
     #
-    # file.close()
+    # # file.close()
     # print("best x: " + str(best_x))
     # print("best y: " + str(best_y))
     # print("best RMSE: " + str(best_RMSE))
@@ -1611,7 +1607,6 @@ def main_space(band=12):
     # point_y = best_y
 
     # 计算纠正后的Radiance
-    print(is_valid.shape)
     BT_0_space = np.zeros(is_valid.shape, dtype=np.float64)
     for i in range(BT_0_space.shape[0]):
         for j in range(BT_0_space.shape[1]):
@@ -1707,13 +1702,24 @@ def addGeoinfo(band):
     ds_BT_0 = driver.Create("pics/BT_0_geo_" + str(band) + ".tif", BT_0.shape[1], BT_0.shape[0], 1, gdal.GDT_Float32)
     ds_BT_60 = driver.Create("pics/BT_60_geo_" + str(band) + ".tif", BT_0.shape[1], BT_0.shape[0], 1, gdal.GDT_Float32)
     ds_BT_0_space = driver.Create("pics/BT_0_space_geo_" + str(band) + ".tif", BT_0.shape[1], BT_0.shape[0], 1, gdal.GDT_Float32)
-    # 手动添加坐标信息
+    # 手动添加坐标信息（计算左上角顶点）
     # 2318
-    geoTrans = (112.0775831299942, 0.005, 0.0, 41.015, 0.0, -0.005)
+    geoTrans = (112.0475831299942, 0.005, 0.0, 41.02, 0.0, -0.005)
+    # # 2309
+    # geoTrans = (112.2025831299942, 0.005, 0.0, 41.55, 0.0, -0.005)
+    # 赋值
     ds_BT_0.SetProjection(proj)
     ds_BT_0.SetGeoTransform(geoTrans)
     ds_BT_0.GetRasterBand(1).WriteArray(BT_0)
     del ds_BT_0
+    ds_BT_60.SetProjection(proj)
+    ds_BT_60.SetGeoTransform(geoTrans)
+    ds_BT_60.GetRasterBand(1).WriteArray(BT_60)
+    del ds_BT_60
+    ds_BT_0_space.SetProjection(proj)
+    ds_BT_0_space.SetGeoTransform(geoTrans)
+    ds_BT_0_space.GetRasterBand(1).WriteArray(BT_0_space)
+    del ds_BT_0_space
 
 
 def test(band):
@@ -1723,32 +1729,32 @@ def test(band):
     # fvc60 = cal_fvc_gap(a, b, 60)
     # print(fvc0)
     # print(fvc60)
-    # # 测试自动提取顶点的结果
-    # # 读取相关数据：某一波段的多角度辐亮度
-    # ds_BT, BT = open_tiff("pics/BT_60_" + str(band) + ".tif")
-    # ds_fvc, fvc = open_tiff("pics/FVC.tif")
-    # ds_valid, is_valid = open_tiff("pics/is_valid.tif")
-    #
-    # # 获取有效值（有效值转换为一维列表）
-    # BT_valid = (BT * is_valid)[fvc > 0]
-    # BT_valid = BT_valid[BT_valid > 0]
-    # fvc_valid = (fvc * is_valid)[BT > 0]
-    # fvc_valid = fvc_valid[fvc_valid > 0]
-    #
-    # # 倾斜方向的特征空间
-    # k1, c1, k2, c2 = getEdges_fvc(BT_valid, fvc_valid)
-    # print(k1, c1, k2, c2)
-    #
-    # # 顶点
-    # point_x, point_y = cal_vertex(k1, c1, k2, c2)
-    # print(point_x, point_y)
-    #
-    # scatter_BTs_fvc(BT_valid, fvc_valid, k1, c1, k2, c2, band="10test", angle=60)
+    # 测试自动提取顶点的结果
+    # 读取相关数据：某一波段的多角度辐亮度
+    ds_BT, BT = open_tiff("pics/BT_60_" + str(band) + ".tif")
+    ds_fvc, fvc = open_tiff("pics/FVC.tif")
+    ds_valid, is_valid = open_tiff("pics/is_valid.tif")
 
-    ds_LAI, LAI = open_tiff(file_MOD15)
-    proj = ds_LAI.GetProjection()
-    # 2318
-    geoTrans = (112.0775831299942, 0.005, 0.0, 41.015, 0.0, -0.005)
+    # 获取有效值（有效值转换为一维列表）
+    BT_valid = (BT * is_valid)[fvc > 0]
+    BT_valid = BT_valid[BT_valid > 0]
+    fvc_valid = (fvc * is_valid)[BT > 0]
+    fvc_valid = fvc_valid[fvc_valid > 0]
+
+    # 倾斜方向的特征空间
+    k1, c1, k2, c2 = getEdges_fvc(BT_valid, fvc_valid)
+    print(k1, c1, k2, c2)
+
+    # 顶点
+    point_x, point_y = cal_vertex(k1, c1, k2, c2)
+    print(point_x, point_y)
+
+    scatter_BTs_fvc(BT_valid, fvc_valid, k1, c1, k2, c2, band="10test", angle=60)
+
+    # ds_LAI, LAI = open_tiff(file_MOD15)
+    # proj = ds_LAI.GetProjection()
+    # # 2318
+    # geoTrans = (112.0775831299942, 0.005, 0.0, 41.015, 0.0, -0.005)
 
 
 def sensitivity_overall():
@@ -1822,7 +1828,7 @@ def sensitivity_VZA():
 
 
 if __name__ == '__main__':
-    # test(12)
+    # test(10)
     # cal_mean_LSTvs()
     # display_FVCdiff()
     # analysis_LSTsv()
@@ -1832,10 +1838,10 @@ if __name__ == '__main__':
     # cal_windowSEsv(7)
 
     for i in range(10, 15):
-        main_calRadiance(i)
+        # main_calRadiance(i)
         main_space(i)
 
     for i in range(10, 15):
-        addGeoinfo(11)
+        addGeoinfo(i)
 
-    # main_space(12)
+    # main_space(14)
