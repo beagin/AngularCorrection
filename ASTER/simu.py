@@ -42,9 +42,16 @@ file_MOD15 = "data/MODIS/LAI_2019185h26v4.Lai_500m.tif"
 file_CI = "data/CI/CI_2019185.tif"
 # 查找表
 file_LUT = "SRF/LUT12.txt"
+
 # 判断植被/土壤的NDVI阈值
 threshold_NDVI = 0.45
 threshold_NDVI_min = 0.3
+# 平均组分发射率
+# 2318
+SEs_aver = [0.9556206,0.95971876,0.9583313,0.96373886,0.9579294,0.96535045,0.9737943,0.97538644,0.96828395,0.9703193]
+# 2309
+# SEs_aver = [0.95921916,0.96219736,0.96382433,0.96685,0.9655643,0.9693147,0.9739296,0.9761412,0.9667597,0.9716622]
+
 # ASTER图像区域
 
 # ****************************************** 文件操作 **************************************
@@ -1358,13 +1365,11 @@ def main_hdf():
     SEv_aver_14 = np.zeros(LAI.shape, dtype=np.float64)
     # 用于存储构造特征空间的数据的列表，数据用[BT,fvc]记录
     is_valid = np.zeros(LAI.shape, dtype=bool)                  # 是否有有效组分（无云/水体的ASTER像元）
-    is_valid_space = np.zeros(LAI.shape, dtype=bool)            # 是否用于构建特征空间
     for y_modis in range(LAI.shape[0]):         # 一行
         if y_modis % 10 == 0:
             print(str(y_modis) + " rows")
         for x_modis in range(LAI.shape[1]):
-            # 对当前MODIS像元，用于存储平均温度、发射率信息的列表
-            LSTv = []
+            # 对当前MODIS像元，用于存储对应ASTER像元温度、组分发射率信息的列表
             LSTs = []
             SEv_10 = []
             SEs_10 = []
@@ -1416,15 +1421,15 @@ def main_hdf():
                                     and cur_std < 0.05 and FVC_60[y_modis, x_modis] > 0 and FVC_0[y_modis, x_modis] < 0.95:
                                 is_valid[y_modis, x_modis] = True
                                 # 根据平均NDVI值判断是植被还是土壤
+                                LSTs.append(lst_aster[y_aster, x_aster])
                                 if cur_ndvi > threshold_NDVI:
-                                    LSTv.append(lst_aster[y_aster, x_aster])
                                     SEv_10.append(SE_10[y_aster, x_aster])
                                     SEv_11.append(SE_11[y_aster, x_aster])
                                     SEv_12.append(SE_12[y_aster, x_aster])
                                     SEv_13.append(SE_13[y_aster, x_aster])
                                     SEv_14.append(SE_14[y_aster, x_aster])
-                                elif cur_ndvi < threshold_NDVI_min:
-                                    LSTs.append(lst_aster[y_aster, x_aster])
+                                else:
+                                # elif cur_ndvi < threshold_NDVI_min:
                                     SEs_10.append(SE_10[y_aster, x_aster])
                                     SEs_11.append(SE_11[y_aster, x_aster])
                                     SEs_12.append(SE_12[y_aster, x_aster])
@@ -1443,28 +1448,23 @@ def main_hdf():
                         continue
 
             # 存储当前像元的组分温度(极值)与组分发射率（均值）
-            if len(LSTv) > 0:
-                LSTv_all[y_modis, x_modis] = np.min(LSTv)
+            # 组分温度为所有像元的极值，组分发射率为对应组分的均值
+            if len(LSTs) > 0:
+                LSTv_all[y_modis, x_modis] = np.min(LSTs)
+                LSTs_all[y_modis, x_modis] = np.max(LSTs)
+
+            if len(SEv_10) > 0:
                 SEv_aver_10[y_modis, x_modis] = np.mean(SEv_10)
                 SEv_aver_11[y_modis, x_modis] = np.mean(SEv_11)
                 SEv_aver_12[y_modis, x_modis] = np.mean(SEv_12)
                 SEv_aver_13[y_modis, x_modis] = np.mean(SEv_13)
                 SEv_aver_14[y_modis, x_modis] = np.mean(SEv_14)
-            if len(LSTs) > 0:
-                LSTs_all[y_modis, x_modis] = np.max(LSTs)
+            if len(SEs_10) > 0:
                 SEs_aver_10[y_modis, x_modis] = np.mean(SEs_10)
                 SEs_aver_11[y_modis, x_modis] = np.mean(SEs_11)
                 SEs_aver_12[y_modis, x_modis] = np.mean(SEs_12)
                 SEs_aver_13[y_modis, x_modis] = np.mean(SEs_13)
                 SEs_aver_14[y_modis, x_modis] = np.mean(SEs_14)
-
-            # 记录像元有效性
-            # 对平均温度进行判断（对水与大部分云的阴影进一步去除）
-            # if np.mean(LSTs) <= 285:
-            #     is_valid[y_modis, x_modis] = False
-            # 是无云像元且两个组分都存在才用于构建特征空间
-            if len(LSTv) > 0 and len(LSTs) > 0:
-                is_valid_space[y_modis, x_modis] = True
 
     print("done component temperature calculation")
     # </editor-fold>
@@ -1486,9 +1486,7 @@ def main_hdf():
     write_tiff(SEv_aver_14, "SEv_aver_14")
 
     write_tiff(is_valid, "is_valid")
-    write_tiff(is_valid_space, "is_valid_component")
 
-    print(len(is_valid_space[is_valid_space == 1]))
     # </editor-fold>
 
 
@@ -1499,12 +1497,12 @@ def main_calRadiance(band=12):
     """
     print("radiance calculation for band " + str(band))
     # 打开所需数据文件
-    _, LSTv = open_tiff("pics/LSTv_window.tif")
-    _, LSTs = open_tiff("pics/LSTs_window.tif")
+    _, LSTv = open_tiff("pics/LSTv_all.tif")
+    _, LSTs = open_tiff("pics/LSTs_all.tif")
     # _, LSTv = open_tiff("pics/LSTv_all.tif")
     # _, LSTs = open_tiff("pics/LSTs_all.tif")
-    _, SEs = open_tiff("pics/SEs_window_" + str(band) + ".tif")
-    _, SEv = open_tiff("pics/SEv_window_" + str(band) + ".tif")
+    _, SEs = open_tiff("pics/SEs_aver_" + str(band) + ".tif")
+    _, SEv = open_tiff("pics/SEv_aver_" + str(band) + ".tif")
     _, FVC_60 = open_tiff("pics/FVC.tif")
     _, FVC_0 = open_tiff("pics/FVC_0.tif")
     _, is_valid = open_tiff("pics/is_valid.tif")
@@ -1723,38 +1721,12 @@ def addGeoinfo(band):
 
 
 def test(band):
-    # a = np.array([[1,2,3],[4,5,6],[7,8,9]])
-    # b = np.ones((3, 3)) * 0.8
-    # fvc0 = cal_fvc_gap(a, b, 0)
-    # fvc60 = cal_fvc_gap(a, b, 60)
-    # print(fvc0)
-    # print(fvc60)
-    # 测试自动提取顶点的结果
-    # 读取相关数据：某一波段的多角度辐亮度
-    ds_BT, BT = open_tiff("pics/BT_60_" + str(band) + ".tif")
-    ds_fvc, fvc = open_tiff("pics/FVC.tif")
-    ds_valid, is_valid = open_tiff("pics/is_valid.tif")
-
-    # 获取有效值（有效值转换为一维列表）
-    BT_valid = (BT * is_valid)[fvc > 0]
-    BT_valid = BT_valid[BT_valid > 0]
-    fvc_valid = (fvc * is_valid)[BT > 0]
-    fvc_valid = fvc_valid[fvc_valid > 0]
-
-    # 倾斜方向的特征空间
-    k1, c1, k2, c2 = getEdges_fvc(BT_valid, fvc_valid)
-    print(k1, c1, k2, c2)
-
-    # 顶点
-    point_x, point_y = cal_vertex(k1, c1, k2, c2)
-    print(point_x, point_y)
-
-    scatter_BTs_fvc(BT_valid, fvc_valid, k1, c1, k2, c2, band="10test", angle=60)
-
-    # ds_LAI, LAI = open_tiff(file_MOD15)
-    # proj = ds_LAI.GetProjection()
-    # # 2318
-    # geoTrans = (112.0775831299942, 0.005, 0.0, 41.015, 0.0, -0.005)
+    _, SEs = open_tiff("pics/SEs_aver_" + str(band) + ".tif")
+    _, SEv = open_tiff("pics/SEv_aver_" + str(band) + ".tif")
+    validSEs = SEs[SEs > 0]
+    validSEv = SEv[SEv > 0]
+    print(np.mean(validSEs))
+    print(np.mean(validSEv))
 
 
 def sensitivity_overall():
@@ -1833,15 +1805,16 @@ if __name__ == '__main__':
     # display_FVCdiff()
     # analysis_LSTsv()
     # display_BTsv_diff()
-    # main_hdf()
+    main_hdf()
     # cal_windowLSTsv(7)
     # cal_windowSEsv(7)
 
     for i in range(10, 15):
-        # main_calRadiance(i)
-        main_space(i)
+        main_calRadiance(i)
+        # main_space(i)
 
-    for i in range(10, 15):
-        addGeoinfo(i)
+    # for i in range(10, 15):
+        # addGeoinfo(i)
+        # test(i)
 
     # main_space(14)
