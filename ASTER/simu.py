@@ -1512,12 +1512,16 @@ def main_calRadiance(band=12):
     # 遍历每个像元，计算辐亮度
     for y in range(LSTs.shape[0]):
         for x in range(LSTs.shape[1]):
-            # 是有效像元且两种组分都有才进行计算
-            if is_valid[y, x] and LSTs[y, x] > 0 and LSTv[y, x] > 0:
+            # 是有效像元才进行计算
+            if is_valid[y, x]:
                 BTs = lst2BTs(LSTs[y, x], band)
                 BTv = lst2BTs(LSTv[y, x], band)
-                BT_0[y, x] = FVC_0[y, x] * BTv * SEv[y, x] + (1 - FVC_0[y, x]) * BTs * SEs[y, x]
-                BT_60[y, x] = FVC_60[y, x] * BTv * SEv[y, x] + (1 - FVC_60[y, x]) * BTs * SEs[y, x]
+                # 判断发射率，没有的组分就使用平均
+                cur_SEs = SEs[y, x] if SEs[y, x] > 0 else SEs_aver[(band-10)*2]
+                cur_SEv = SEv[y, x] if SEv[y, x] > 0 else SEs_aver[(band-10)*2+1]
+                #
+                BT_0[y, x] = FVC_0[y, x] * BTv * cur_SEv + (1 - FVC_0[y, x]) * BTs * cur_SEs
+                BT_60[y, x] = FVC_60[y, x] * BTv * cur_SEv + (1 - FVC_60[y, x]) * BTs * cur_SEs
                 if BT_60[y,x] == 0 and BT_0[y, x] != 0:
                     print(BT_0[y,x])
                     print(BTs, BTv, FVC_0[y, x], FVC_60[y, x], SEv[y, x], SEs[y, x])
@@ -1571,38 +1575,38 @@ def main_space(band=12):
     point_x, point_y = cal_vertex(k1, c1, k2, c2)
     print(point_x, point_y)
 
-    # # 寻找最优顶点
-    # best_x = 0
-    # best_y = 0
-    # best_RMSE = 2
-    # # 记录RMSE的文件
-    # # file = open("pics/RMSEs_space" + str(band) + ".txt", 'w')
-    # # file.write("fvc\tRadiance\tRMSE\n")
-    # for x in range(15, 200):
-    #     point_x = x / 10
-    #     for y in [-x + delta for delta in range(-50, 200)]:
-    #         point_y = y / 10
-    #         BT_0_space = np.zeros(BT_0_valid.shape, dtype=np.float64)
-    #         for i in range(BT_0_valid.shape[0]):
-    #             # FVC过大的点直接去除
-    #             if fvc_0_valid[i] > point_x or fvc_valid[i] > point_x:
-    #                 continue
-    #             k, c = cal_params(point_y, point_x, BT_valid[i], fvc_valid[i])
-    #             BT_0_space[i] = k * fvc_0_valid[i] + c
-    #         RMSE_BT_space_0 = np.sqrt(metrics.mean_squared_error(BT_0_valid, BT_0_space))
-    #         # file.write("%f\t%f\t%f\n" % (point_x, point_y, RMSE_BT_space_0))
-    #         # 根据fvc_0与特征空间计算垂直方向辐亮度
-    #         if RMSE_BT_space_0 < best_RMSE:
-    #             best_x = point_x
-    #             best_y = point_y
-    #             best_RMSE = RMSE_BT_space_0
-    #
-    # # file.close()
-    # print("best x: " + str(best_x))
-    # print("best y: " + str(best_y))
-    # print("best RMSE: " + str(best_RMSE))
-    # point_x = best_x
-    # point_y = best_y
+    # 寻找最优顶点
+    best_x = 0
+    best_y = 0
+    best_RMSE = 2
+    # 记录RMSE的文件
+    # file = open("pics/RMSEs_space" + str(band) + ".txt", 'w')
+    # file.write("fvc\tRadiance\tRMSE\n")
+    for x in range(15, 200):
+        point_x = x / 10
+        for y in [-x + delta for delta in range(-50, 200)]:
+            point_y = y / 10
+            BT_0_space = np.zeros(BT_0_valid.shape, dtype=np.float64)
+            for i in range(BT_0_valid.shape[0]):
+                # FVC过大的点直接去除
+                if fvc_0_valid[i] > point_x or fvc_valid[i] > point_x:
+                    continue
+                k, c = cal_params(point_y, point_x, BT_valid[i], fvc_valid[i])
+                BT_0_space[i] = k * fvc_0_valid[i] + c
+            RMSE_BT_space_0 = np.sqrt(metrics.mean_squared_error(BT_0_valid, BT_0_space))
+            # file.write("%f\t%f\t%f\n" % (point_x, point_y, RMSE_BT_space_0))
+            # 根据fvc_0与特征空间计算垂直方向辐亮度
+            if RMSE_BT_space_0 < best_RMSE:
+                best_x = point_x
+                best_y = point_y
+                best_RMSE = RMSE_BT_space_0
+
+    # file.close()
+    print("best x: " + str(best_x))
+    print("best y: " + str(best_y))
+    print("best RMSE: " + str(best_RMSE))
+    point_x = best_x
+    point_y = best_y
 
     # 计算纠正后的Radiance
     BT_0_space = np.zeros(is_valid.shape, dtype=np.float64)
@@ -1805,16 +1809,16 @@ if __name__ == '__main__':
     # display_FVCdiff()
     # analysis_LSTsv()
     # display_BTsv_diff()
-    main_hdf()
+    # main_hdf()
     # cal_windowLSTsv(7)
     # cal_windowSEsv(7)
 
     for i in range(10, 15):
-        main_calRadiance(i)
-        # main_space(i)
+        # main_calRadiance(i)
+        main_space(i)
+        addGeoinfo(i)
 
     # for i in range(10, 15):
         # addGeoinfo(i)
-        # test(i)
 
     # main_space(14)

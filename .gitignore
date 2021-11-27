@@ -11,3 +11,5 @@ GF5_validation/
 ASTER/SRF/
 *.hdf
 *.pptx
+*.docx
+*.tmp
