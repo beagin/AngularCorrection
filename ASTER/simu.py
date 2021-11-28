@@ -583,8 +583,6 @@ def getEdges_fvc(BT: np.ndarray, fvc: np.ndarray):
     Tmax_aver = []
     Tmin_aver = []
     # 区间对应的NDVI值
-    NDVI_list = []
-    NDVI_list = []
     for i in range(interval_num):
         # print("Ts[" + str(i) + "]")
         # max Ts of subintervals in this interval
@@ -647,9 +645,9 @@ def getEdges_fvc(BT: np.ndarray, fvc: np.ndarray):
     # 2318 B13
     # Tmax_aver[0] = 11.4
     # Tmax_aver[-1] = 9.25
-    # 2309
-    Tmax_aver[0] = 9.6
-    Tmax_aver[-1] = 8.86
+    # # 2309
+    # Tmax_aver[0] = 9.6
+    # Tmax_aver[-1] = 8.86
 
     print(ndvi_list)
     # ndvi值（x轴）
@@ -676,9 +674,9 @@ def getEdges_fvc(BT: np.ndarray, fvc: np.ndarray):
     # Tmin_aver[-1] = 7.75
     # 2318 B14
     # Tmin_aver[0] = 8.7
-    # 2309
-    Tmin_aver[0] = 8.0
-    Tmin_aver[-1] = 7.36
+    # # 2309
+    # Tmin_aver[0] = 8.0
+    # Tmin_aver[-1] = 7.36
 
     # ndvi值（x轴）
     while True:
@@ -946,6 +944,13 @@ def cal_windowSEsv(window=5):
     write_tiff(SEs_14_window, "SEs_window_14")
     write_tiff(SEv_14_window, "SEv_window_14")
 
+
+def up_sample():
+    """
+    对各种数据进行上采样，由0.005到0.01degree分辨率
+    :return:
+    """
+    pass
 
 # </editor-fold>    计算
 
@@ -1575,38 +1580,38 @@ def main_space(band=12):
     point_x, point_y = cal_vertex(k1, c1, k2, c2)
     print(point_x, point_y)
 
-    # 寻找最优顶点
-    best_x = 0
-    best_y = 0
-    best_RMSE = 2
-    # 记录RMSE的文件
-    # file = open("pics/RMSEs_space" + str(band) + ".txt", 'w')
-    # file.write("fvc\tRadiance\tRMSE\n")
-    for x in range(15, 200):
-        point_x = x / 10
-        for y in [-x + delta for delta in range(-50, 200)]:
-            point_y = y / 10
-            BT_0_space = np.zeros(BT_0_valid.shape, dtype=np.float64)
-            for i in range(BT_0_valid.shape[0]):
-                # FVC过大的点直接去除
-                if fvc_0_valid[i] > point_x or fvc_valid[i] > point_x:
-                    continue
-                k, c = cal_params(point_y, point_x, BT_valid[i], fvc_valid[i])
-                BT_0_space[i] = k * fvc_0_valid[i] + c
-            RMSE_BT_space_0 = np.sqrt(metrics.mean_squared_error(BT_0_valid, BT_0_space))
-            # file.write("%f\t%f\t%f\n" % (point_x, point_y, RMSE_BT_space_0))
-            # 根据fvc_0与特征空间计算垂直方向辐亮度
-            if RMSE_BT_space_0 < best_RMSE:
-                best_x = point_x
-                best_y = point_y
-                best_RMSE = RMSE_BT_space_0
-
-    # file.close()
-    print("best x: " + str(best_x))
-    print("best y: " + str(best_y))
-    print("best RMSE: " + str(best_RMSE))
-    point_x = best_x
-    point_y = best_y
+    # # 寻找最优顶点
+    # best_x = 0
+    # best_y = 0
+    # best_RMSE = 2
+    # # 记录RMSE的文件
+    # # file = open("pics/RMSEs_space" + str(band) + ".txt", 'w')
+    # # file.write("fvc\tRadiance\tRMSE\n")
+    # for x in range(15, 300):
+    #     point_x = x / 10
+    #     for y in [-x + delta for delta in range(-50, 200)]:
+    #         point_y = y / 10
+    #         BT_0_space = np.zeros(BT_0_valid.shape, dtype=np.float64)
+    #         for i in range(BT_0_valid.shape[0]):
+    #             # FVC过大的点直接去除
+    #             if fvc_0_valid[i] > point_x or fvc_valid[i] > point_x:
+    #                 continue
+    #             k, c = cal_params(point_y, point_x, BT_valid[i], fvc_valid[i])
+    #             BT_0_space[i] = k * fvc_0_valid[i] + c
+    #         RMSE_BT_space_0 = np.sqrt(metrics.mean_squared_error(BT_0_valid, BT_0_space))
+    #         # file.write("%f\t%f\t%f\n" % (point_x, point_y, RMSE_BT_space_0))
+    #         # 根据fvc_0与特征空间计算垂直方向辐亮度
+    #         if RMSE_BT_space_0 < best_RMSE:
+    #             best_x = point_x
+    #             best_y = point_y
+    #             best_RMSE = RMSE_BT_space_0
+    #
+    # # file.close()
+    # print("best x: " + str(best_x))
+    # print("best y: " + str(best_y))
+    # print("best RMSE: " + str(best_RMSE))
+    # point_x = best_x
+    # point_y = best_y
 
     # 计算纠正后的Radiance
     BT_0_space = np.zeros(is_valid.shape, dtype=np.float64)
@@ -1724,13 +1729,12 @@ def addGeoinfo(band):
     del ds_BT_0_space
 
 
-def test(band):
-    _, SEs = open_tiff("pics/SEs_aver_" + str(band) + ".tif")
-    _, SEv = open_tiff("pics/SEv_aver_" + str(band) + ".tif")
-    validSEs = SEs[SEs > 0]
-    validSEv = SEv[SEv > 0]
-    print(np.mean(validSEs))
-    print(np.mean(validSEv))
+def test():
+    _, LSTs = open_tiff("pics/v3.6_2318/LSTs_all.tif")
+    _, LSTv = open_tiff("pics/v3.6_2318/LSTv_all.tif")
+    diff = LSTs - LSTv
+    diff = diff[diff != 0]
+    display_hist(diff, "diff_LSTsv")
 
 
 def sensitivity_overall():
@@ -1804,7 +1808,7 @@ def sensitivity_VZA():
 
 
 if __name__ == '__main__':
-    # test(10)
+    # test()
     # cal_mean_LSTvs()
     # display_FVCdiff()
     # analysis_LSTsv()
@@ -1812,11 +1816,11 @@ if __name__ == '__main__':
     # main_hdf()
     # cal_windowLSTsv(7)
     # cal_windowSEsv(7)
-
-    for i in range(10, 15):
+    up_sample()
+    # for i in range(10, 15):
         # main_calRadiance(i)
-        main_space(i)
-        addGeoinfo(i)
+        # main_space(i)
+        # addGeoinfo(i)
 
     # for i in range(10, 15):
         # addGeoinfo(i)
