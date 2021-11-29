@@ -950,7 +950,60 @@ def up_sample():
     对各种数据进行上采样，由0.005到0.01degree分辨率
     :return:
     """
-    pass
+    # 打开数据
+    _, LSTv = open_tiff("pics/LSTv_all.tif")
+    _, LSTs = open_tiff("pics/LSTs_all.tif")
+    _, FVC_60 = open_tiff("pics/FVC.tif")
+    _, FVC_0 = open_tiff("pics/FVC_0.tif")
+    _, is_valid = open_tiff("pics/is_valid.tif")
+
+    # 上采样操作
+    shape = LSTs.shape
+    print(shape)
+    new_shape = (int(shape[0] / 2), int(shape[1] / 2))
+    new_LSTv = np.zeros(new_shape, dtype=np.float64)
+    new_LSTs = np.zeros(new_shape, dtype=np.float64)
+    new_FVC60 = np.zeros(new_shape, dtype=np.float64)
+    new_FVC0 = np.zeros(new_shape, dtype=np.float64)
+    new_valid = np.zeros(new_shape, dtype=np.float64)
+    for i in range(new_shape[0]):
+        for j in range(new_shape[1]):
+            # 取范围内的有效值
+            cur_valid = is_valid[i*2:i*2+2, j*2:j*2+2]
+            # 当前范围存在有效值
+            if np.mean(cur_valid > 0):
+                # 其他数据取平均值
+                new_FVC60[i, j] = np.mean((FVC_60[i*2:i*2+2, j*2:j*2+2])[cur_valid > 0])
+                new_FVC0[i, j] = np.mean((FVC_0[i*2:i*2+2, j*2:j*2+2])[cur_valid > 0])
+                new_valid[i, j] = 1
+                # 组分LST需进行特殊处理
+                new_LSTs[i, j] = np.max(LSTs[i*2:i*2+2, j*2:j*2+2])
+                new_LSTv[i, j] = np.min(LSTv[i*2:i*2+2, j*2:j*2+2])
+            # 不存在有效值，则全部为0
+            else:
+                pass
+
+    # 存储上采样后的数据
+    write_tiff(new_LSTv, "LSTv_up")
+    write_tiff(new_LSTs, "LSTs_up")
+    write_tiff(new_FVC60, "FVC_60_up")
+    write_tiff(new_FVC0, "FVC_0_up")
+
+    # 对每个波段的等效发射率进行处理
+    for band in range(10, 15):
+        _, SEs = open_tiff("pics/SEs_aver_" + str(band) + ".tif")
+        _, SEv = open_tiff("pics/SEv_aver_" + str(band) + ".tif")
+        new_SEs = np.zeros(new_shape, dtype=np.float64)
+        new_SEv = np.zeros(new_shape, dtype=np.float64)
+        for i in range(new_shape[0]):
+            for j in range(new_shape[1]):
+                cur_valid = is_valid[i*2:i*2+2, j*2:j*2+2]
+                if np.mean(cur_valid > 0):
+                    new_SEs[i, j] = np.mean((SEs[i*2:i*2+2, j*2:j*2+2])[cur_valid > 0])
+                    new_SEv[i, j] = np.mean((SEv[i*2:i*2+2, j*2:j*2+2])[cur_valid > 0])
+        write_tiff(new_SEs, "SEs_up_" + str(band))
+        write_tiff(new_SEv, "SEs_up_" + str(band))
+    write_tiff(new_valid, "is_valid_up")
 
 # </editor-fold>    计算
 
