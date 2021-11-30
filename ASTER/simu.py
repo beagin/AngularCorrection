@@ -971,15 +971,14 @@ def up_sample():
             # 取范围内的有效值
             cur_valid = is_valid[i*2:i*2+2, j*2:j*2+2]
             # 当前范围存在有效值
-            if np.mean(cur_valid > 0):
+            if np.mean(cur_valid) > 0:
                 # 其他数据取平均值
                 new_FVC60[i, j] = np.mean((FVC_60[i*2:i*2+2, j*2:j*2+2])[cur_valid > 0])
                 new_FVC0[i, j] = np.mean((FVC_0[i*2:i*2+2, j*2:j*2+2])[cur_valid > 0])
                 new_valid[i, j] = 1
                 # 组分LST需进行特殊处理
                 new_LSTs[i, j] = np.max(LSTs[i*2:i*2+2, j*2:j*2+2])
-                new_LSTv[i, j] = np.min(LSTv[i*2:i*2+2, j*2:j*2+2])
-            # 不存在有效值，则全部为0
+                new_LSTv[i, j] = np.min((LSTv[i*2:i*2+2, j*2:j*2+2])[cur_valid > 0])    # 尽管是取极值，也需要先进行有效筛选，否则会是0
             else:
                 pass
 
@@ -998,11 +997,16 @@ def up_sample():
         for i in range(new_shape[0]):
             for j in range(new_shape[1]):
                 cur_valid = is_valid[i*2:i*2+2, j*2:j*2+2]
-                if np.mean(cur_valid > 0):
-                    new_SEs[i, j] = np.mean((SEs[i*2:i*2+2, j*2:j*2+2])[cur_valid > 0])
-                    new_SEv[i, j] = np.mean((SEv[i*2:i*2+2, j*2:j*2+2])[cur_valid > 0])
+                if np.mean(cur_valid) > 0:
+                    cur_SEs = SEs[i*2:i*2+2, j*2:j*2+2]
+                    cur_SEv = SEv[i*2:i*2+2, j*2:j*2+2]
+                    new_SEs[i, j] = np.mean(cur_SEs[cur_SEs > 0])
+                    new_SEv[i, j] = np.mean(cur_SEv[cur_SEv > 0])
+                    if new_SEs[i, j] < 0.5:
+                        print(cur_valid)
+                        print((SEs[i*2:i*2+2, j*2:j*2+2])[cur_valid > 0])
         write_tiff(new_SEs, "SEs_up_" + str(band))
-        write_tiff(new_SEv, "SEs_up_" + str(band))
+        write_tiff(new_SEv, "SEv_up_" + str(band))
     write_tiff(new_valid, "is_valid_up")
 
 # </editor-fold>    计算
@@ -1555,15 +1559,15 @@ def main_calRadiance(band=12):
     """
     print("radiance calculation for band " + str(band))
     # 打开所需数据文件
-    _, LSTv = open_tiff("pics/LSTv_all.tif")
-    _, LSTs = open_tiff("pics/LSTs_all.tif")
+    _, LSTv = open_tiff("pics/LSTv_up.tif")
+    _, LSTs = open_tiff("pics/LSTs_up.tif")
     # _, LSTv = open_tiff("pics/LSTv_all.tif")
     # _, LSTs = open_tiff("pics/LSTs_all.tif")
-    _, SEs = open_tiff("pics/SEs_aver_" + str(band) + ".tif")
-    _, SEv = open_tiff("pics/SEv_aver_" + str(band) + ".tif")
-    _, FVC_60 = open_tiff("pics/FVC.tif")
-    _, FVC_0 = open_tiff("pics/FVC_0.tif")
-    _, is_valid = open_tiff("pics/is_valid.tif")
+    _, SEs = open_tiff("pics/SEs_up_" + str(band) + ".tif")
+    _, SEv = open_tiff("pics/SEv_up_" + str(band) + ".tif")
+    _, FVC_60 = open_tiff("pics/FVC_60_up.tif")
+    _, FVC_0 = open_tiff("pics/FVC_0_up.tif")
+    _, is_valid = open_tiff("pics/is_valid_up.tif")
     # 存储计算出来的两个角度辐亮度的数组
     BT_0 = np.zeros(LSTs.shape, dtype=np.float64)
     BT_60 = np.zeros(LSTs.shape, dtype=np.float64)
@@ -1600,9 +1604,9 @@ def main_space(band=12):
     # 读取相关数据：某一波段的多角度辐亮度
     ds_BT, BT = open_tiff("pics/BT_60_" + str(band) + ".tif")
     ds_BT_0, BT_0 = open_tiff("pics/BT_0_" + str(band) + ".tif")
-    ds_fvc, fvc = open_tiff("pics/FVC.tif")
-    ds_fvc_0, fvc_0 = open_tiff("pics/FVC_0.tif")
-    ds_valid, is_valid = open_tiff("pics/is_valid.tif")
+    ds_fvc, fvc = open_tiff("pics/FVC_60_up.tif")
+    ds_fvc_0, fvc_0 = open_tiff("pics/FVC_0_up.tif")
+    ds_valid, is_valid = open_tiff("pics/is_valid_up.tif")
 
     # 更新is_valid数据
     is_valid[BT <= 0] = 0
@@ -1633,38 +1637,38 @@ def main_space(band=12):
     point_x, point_y = cal_vertex(k1, c1, k2, c2)
     print(point_x, point_y)
 
-    # # 寻找最优顶点
-    # best_x = 0
-    # best_y = 0
-    # best_RMSE = 2
-    # # 记录RMSE的文件
-    # # file = open("pics/RMSEs_space" + str(band) + ".txt", 'w')
-    # # file.write("fvc\tRadiance\tRMSE\n")
-    # for x in range(15, 300):
-    #     point_x = x / 10
-    #     for y in [-x + delta for delta in range(-50, 200)]:
-    #         point_y = y / 10
-    #         BT_0_space = np.zeros(BT_0_valid.shape, dtype=np.float64)
-    #         for i in range(BT_0_valid.shape[0]):
-    #             # FVC过大的点直接去除
-    #             if fvc_0_valid[i] > point_x or fvc_valid[i] > point_x:
-    #                 continue
-    #             k, c = cal_params(point_y, point_x, BT_valid[i], fvc_valid[i])
-    #             BT_0_space[i] = k * fvc_0_valid[i] + c
-    #         RMSE_BT_space_0 = np.sqrt(metrics.mean_squared_error(BT_0_valid, BT_0_space))
-    #         # file.write("%f\t%f\t%f\n" % (point_x, point_y, RMSE_BT_space_0))
-    #         # 根据fvc_0与特征空间计算垂直方向辐亮度
-    #         if RMSE_BT_space_0 < best_RMSE:
-    #             best_x = point_x
-    #             best_y = point_y
-    #             best_RMSE = RMSE_BT_space_0
-    #
-    # # file.close()
-    # print("best x: " + str(best_x))
-    # print("best y: " + str(best_y))
-    # print("best RMSE: " + str(best_RMSE))
-    # point_x = best_x
-    # point_y = best_y
+    # 寻找最优顶点
+    best_x = 0
+    best_y = 0
+    best_RMSE = 2
+    # 记录RMSE的文件
+    # file = open("pics/RMSEs_space" + str(band) + ".txt", 'w')
+    # file.write("fvc\tRadiance\tRMSE\n")
+    for x in range(15, 300):
+        point_x = x / 10
+        for y in [-x + delta for delta in range(-50, 200)]:
+            point_y = y / 10
+            BT_0_space = np.zeros(BT_0_valid.shape, dtype=np.float64)
+            for i in range(BT_0_valid.shape[0]):
+                # FVC过大的点直接去除
+                if fvc_0_valid[i] > point_x or fvc_valid[i] > point_x:
+                    continue
+                k, c = cal_params(point_y, point_x, BT_valid[i], fvc_valid[i])
+                BT_0_space[i] = k * fvc_0_valid[i] + c
+            RMSE_BT_space_0 = np.sqrt(metrics.mean_squared_error(BT_0_valid, BT_0_space))
+            # file.write("%f\t%f\t%f\n" % (point_x, point_y, RMSE_BT_space_0))
+            # 根据fvc_0与特征空间计算垂直方向辐亮度
+            if RMSE_BT_space_0 < best_RMSE:
+                best_x = point_x
+                best_y = point_y
+                best_RMSE = RMSE_BT_space_0
+
+    # file.close()
+    print("best x: " + str(best_x))
+    print("best y: " + str(best_y))
+    print("best RMSE: " + str(best_RMSE))
+    point_x = best_x
+    point_y = best_y
 
     # 计算纠正后的Radiance
     BT_0_space = np.zeros(is_valid.shape, dtype=np.float64)
@@ -1783,10 +1787,11 @@ def addGeoinfo(band):
 
 
 def test():
-    _, LSTs = open_tiff("pics/v3.6_2318/LSTs_all.tif")
-    _, LSTv = open_tiff("pics/v3.6_2318/LSTv_all.tif")
+    _, LSTs = open_tiff("pics/LSTs_up.tif")
+    _, LSTv = open_tiff("pics/LSTv_up.tif")
     diff = LSTs - LSTv
     diff = diff[diff != 0]
+    diff = diff[diff < 50]
     display_hist(diff, "diff_LSTsv")
 
 
@@ -1870,9 +1875,9 @@ if __name__ == '__main__':
     # cal_windowLSTsv(7)
     # cal_windowSEsv(7)
     up_sample()
-    # for i in range(10, 15):
-        # main_calRadiance(i)
-        # main_space(i)
+    for i in range(10, 15):
+        main_calRadiance(i)
+        main_space(i)
         # addGeoinfo(i)
 
     # for i in range(10, 15):
