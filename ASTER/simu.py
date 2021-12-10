@@ -21,13 +21,13 @@ import random
 # file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032327_20211109044429_8561.hdf"
 # file_SE_ASTER = "data/ASTER/AST_05_00307062019032327_20211109202540_19729.hdf"
 # 2318
-file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032318_20211109202424_8809.hdf"
-file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032318_20211109044429_8560.hdf"
-file_SE_ASTER = "data/ASTER/AST_05_00307062019032318_20211109202540_19735.hdf"
+# file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032318_20211109202424_8809.hdf"
+# file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032318_20211109044429_8560.hdf"
+# file_SE_ASTER = "data/ASTER/AST_05_00307062019032318_20211109202540_19735.hdf"
 # 2309
-# file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032309_20211109202424_8812.hdf"
-# file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032309_20211109044449_8628.hdf"
-# file_SE_ASTER = "data/ASTER/AST_05_00307062019032309_20211109202540_19741.hdf"
+file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032309_20211109202424_8812.hdf"
+file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032309_20211109044449_8628.hdf"
+file_SE_ASTER = "data/ASTER/AST_05_00307062019032309_20211109202540_19741.hdf"
 
 # MOD09
 file_MOD09_1 = "data/MODIS/MOD09GA.sur_refl_b01_1.tif"
@@ -51,8 +51,6 @@ threshold_NDVI_min = 0.3
 SEs_aver = [0.9556206,0.95971876,0.9583313,0.96373886,0.9579294,0.96535045,0.9737943,0.97538644,0.96828395,0.9703193]
 # 2309
 # SEs_aver = [0.95921916,0.96219736,0.96382433,0.96685,0.9655643,0.9693147,0.9739296,0.9761412,0.9667597,0.9716622]
-
-# ASTER图像区域
 
 # ****************************************** 文件操作 **************************************
 
@@ -642,9 +640,9 @@ def getEdges_fvc(BT: np.ndarray, fvc: np.ndarray):
 
     # Tmax
     ndvi_list = np.array([(0.5/interval_num + i /interval_num) for i in range(interval_num)])
-    # 2318 B13
-    # Tmax_aver[0] = 11.4
-    # Tmax_aver[-1] = 9.25
+    # 2318 B10
+    Tmax_aver[0] = 13
+    Tmax_aver[-1] = 9.25
     # # 2309
     # Tmax_aver[0] = 9.6
     # Tmax_aver[-1] = 8.86
@@ -670,8 +668,8 @@ def getEdges_fvc(BT: np.ndarray, fvc: np.ndarray):
 
     # Tmin
     ndvi_list = np.array([(0.5/interval_num + i /interval_num) for i in range(interval_num)])
-    # 2318 B13
-    # Tmin_aver[-1] = 7.75
+    # 2318 B10
+    Tmin_aver[-1] = 8.1
     # 2318 B14
     # Tmin_aver[0] = 8.7
     # # 2309
@@ -1293,6 +1291,43 @@ def display_BTsv_diff():
 
     return
 
+
+def result_diff(band):
+    """
+    结果分析部分，差值等txt导出
+    :return:
+    """
+    # 结果亮温
+    _, BT_0_space = open_tiff("pics/BT_space_0_final_" + str(band) + ".tif")
+    _, BT_0 = open_tiff("pics/BT_0_final_" + str(band) + ".tif")
+    _, BT_60 = open_tiff("pics/BT_final_" + str(band) + ".tif")
+    # 组分温度
+    _, LSTv = open_tiff("pics/LSTv_up.tif")
+    _, LSTs = open_tiff("pics/LSTs_up.tif")
+    # 差值s
+    diff = BT_0_space - BT_0    # 实际结果与理想结果差值
+    diff_ori = BT_0 - BT_60     # 模拟/理想的纠正量
+    diff_real = BT_0_space - BT_60  # 实际算法纠正量
+    diff_clst = LSTs - LSTv     # 组分温度差值
+    file_diff = open("pics/diff_corr_simu_" + str(band) + ".txt", 'w')
+    file_clst = open("pics/diff_CLST.txt", 'w')
+    file_ori = open("pics/diff_simu_diff_" + str(band) + ".txt", 'w')
+    file_real = open("pics/diff_corr_diff_" + str(band) + ".txt", 'w')
+    shape = diff.shape
+    for i in range(shape[0]):
+        for j in range(shape[1]):
+            if BT_0_space[i, j] != 0:
+                file_diff.write(str(diff[i, j]) + ",")
+                file_ori.write(str(diff_ori[i, j]) + ",")
+                file_real.write(str(diff_real[i, j]) + ",")
+                file_clst.write(str(diff_clst[i, j]) + ",")
+
+    file_diff.close()
+    file_ori.close()
+    file_real.close()
+    file_clst.close()
+
+
 # </editor-fold>
 
 # ****************************************** 综合 ******************************************
@@ -1767,10 +1802,10 @@ def addGeoinfo(band):
     ds_BT_60 = driver.Create("pics/BT_60_geo_" + str(band) + ".tif", BT_0.shape[1], BT_0.shape[0], 1, gdal.GDT_Float32)
     ds_BT_0_space = driver.Create("pics/BT_0_space_geo_" + str(band) + ".tif", BT_0.shape[1], BT_0.shape[0], 1, gdal.GDT_Float32)
     # 手动添加坐标信息（计算左上角顶点）
-    # 2318
-    geoTrans = (112.0475831299942, 0.005, 0.0, 41.02, 0.0, -0.005)
-    # # 2309
-    # geoTrans = (112.2025831299942, 0.005, 0.0, 41.55, 0.0, -0.005)
+    # # 2318
+    # geoTrans = (112.0475831299942, 0.01, 0.0, 41.02, 0.0, -0.01)
+    # 2309
+    geoTrans = (112.2025831299942, 0.01, 0.0, 41.55, 0.0, -0.01)
     # 赋值
     ds_BT_0.SetProjection(proj)
     ds_BT_0.SetGeoTransform(geoTrans)
@@ -1867,19 +1902,16 @@ def sensitivity_VZA():
 
 if __name__ == '__main__':
     # test()
-    # cal_mean_LSTvs()
     # display_FVCdiff()
     # analysis_LSTsv()
     # display_BTsv_diff()
     # main_hdf()
-    # cal_windowLSTsv(7)
-    # cal_windowSEsv(7)
-    up_sample()
-    for i in range(10, 15):
-        main_calRadiance(i)
-        main_space(i)
+    # up_sample()
+    # for i in range(10, 15):
+        # main_calRadiance(i)
+        # main_space(i)
         # addGeoinfo(i)
-
+    result_diff(14)
     # for i in range(10, 15):
         # addGeoinfo(i)
 
