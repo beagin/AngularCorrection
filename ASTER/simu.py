@@ -1122,6 +1122,23 @@ def get_aster_lat_lon(sds):
     # 将数组转化为ndarray再返回
     return np.asarray(lat), np.asarray(lon)
 
+
+def generate_angles(shape:tuple, minVZA=55):
+    """
+    给定一个数据的shape，生成同样大小的角度（VZA）数据
+    :param shape:
+    :param minVZA:  范围内的最小角度，作为左上角
+    :return:
+    """
+    VZA = np.zeros(shape)
+    for i in range(shape[0]):
+        for j in range(shape[1]):
+            # 每个点，根据横纵坐标计算，i为纵坐标
+            VZA[i, j] = minVZA + i * 0.013 + j * 0.033
+    write_tiff(VZA, "VZA")
+    return VZA
+
+
 # </editor-fold>
 
 # ****************************************** 绘制图像 **************************************
@@ -1436,11 +1453,12 @@ def main_hdf():
     # <editor-fold> 对每个MODIS像元：获取对应的CI值，计算fvc_60与fvc_0；计算其对应ASTER像元的平均LSTs, LSTv，进而计算辐亮度
     # 60度
     theta_60 = 60
+    realVZA = generate_angles(LAI.shape)
     # 0度
     theta_0 = 0
 
     # 计算FVC，G默认为0.5，并导出图像
-    FVC_60 = cal_fvc_gap(LAI, CI, theta_60)
+    FVC_60 = cal_fvc_gap(LAI, CI, realVZA)
     FVC_0 = cal_fvc_gap(LAI, CI, theta_0)
     write_tiff(FVC_60, "FVC")
     write_tiff(FVC_0, "FVC_0")
@@ -1514,7 +1532,7 @@ def main_hdf():
                             # 针对ASTER三个波段反射率、nir波段反射率方差进行筛选
                             # 去除水体、阴影、云、FVC异常值（来自CI、LAI的异常像元）
                             if (not (np.mean(cur_vis) < 0.2 and np.mean(cur_nir) < 0.2 and np.mean(cur_red) < 0.2)) and \
-                                    (not (np.mean(cur_vis) > 0.3 and np.mean(cur_nir) > 0.3 and np.mean(cur_red) > 0.3))\
+                                    (not (np.mean(cur_vis) > 0.3 and np.mean(cur_nir) > 0.25 and np.mean(cur_red) > 0.25))\
                                     and cur_std < 0.05 and FVC_60[y_modis, x_modis] > 0 and FVC_0[y_modis, x_modis] < 0.95:
                                 is_valid[y_modis, x_modis] = True
                                 # 根据平均NDVI值判断是植被还是土壤
@@ -1822,12 +1840,8 @@ def addGeoinfo(band):
 
 
 def test():
-    _, LSTs = open_tiff("pics/LSTs_up.tif")
-    _, LSTv = open_tiff("pics/LSTv_up.tif")
-    diff = LSTs - LSTv
-    diff = diff[diff != 0]
-    diff = diff[diff < 50]
-    display_hist(diff, "diff_LSTsv")
+    _, LSTs = open_tiff("pics/LSTv_up.tif")
+    VZA = generate_angles(LSTs.shape)
 
 
 def sensitivity_overall():
@@ -1905,13 +1919,13 @@ if __name__ == '__main__':
     # display_FVCdiff()
     # analysis_LSTsv()
     # display_BTsv_diff()
-    # main_hdf()
-    # up_sample()
-    # for i in range(10, 15):
-        # main_calRadiance(i)
-        # main_space(i)
+    main_hdf()
+    up_sample()
+    for i in range(10, 15):
+        main_calRadiance(i)
+        main_space(i)
         # addGeoinfo(i)
-    result_diff(14)
+    # result_diff(14)
     # for i in range(10, 15):
         # addGeoinfo(i)
 
