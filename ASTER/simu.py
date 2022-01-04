@@ -1539,6 +1539,26 @@ def main_hdf():
     # </editor-fold>
 
 
+def add_noise():
+    """
+    给计算出的组分温度添加噪声
+    :return:
+    """
+    _, LSTv = open_tiff("pics/LSTv_up.tif")
+    _, LSTs = open_tiff("pics/LSTs_up.tif")
+    # 添加噪声
+    noise = np.random.normal(1, 1, LSTs.shape)
+    LSTv_new = LSTv + noise
+    noise = np.random.normal(1, 1, LSTs.shape)
+    LSTs_new = LSTs + noise
+    # 有效区域外重新赋值
+    LSTv_new[LSTv==0] = 0
+    LSTs_new[LSTs==0] = 0
+    # 输出结果
+    write_tiff(LSTs_new, "LSTs_up_noise")
+    write_tiff(LSTv_new, "LSTv_up_noise")
+
+
 def main_calRadiance(band=12):
     """
     从平均组分温度、组分发射率、植被覆盖度来计算辐亮度
@@ -1546,15 +1566,14 @@ def main_calRadiance(band=12):
     """
     print("radiance calculation for band " + str(band))
     # 打开所需数据文件
-    _, LSTv = open_tiff("pics/LSTv_up.tif")
-    _, LSTs = open_tiff("pics/LSTs_up.tif")
-    # _, LSTv = open_tiff("pics/LSTv_all.tif")
-    # _, LSTs = open_tiff("pics/LSTs_all.tif")
+    _, LSTv = open_tiff("pics/LSTv_up_noise.tif")
+    _, LSTs = open_tiff("pics/LSTs_up_noise.tif")
     _, SEs = open_tiff("pics/SEs_up_" + str(band) + ".tif")
     _, SEv = open_tiff("pics/SEv_up_" + str(band) + ".tif")
     _, FVC_60 = open_tiff("pics/FVC_60_up.tif")
     _, FVC_0 = open_tiff("pics/FVC_0_up.tif")
     _, is_valid = open_tiff("pics/is_valid_up.tif")
+
     # 存储计算出来的两个角度辐亮度的数组
     BT_0 = np.zeros(LSTs.shape, dtype=np.float64)
     BT_60 = np.zeros(LSTs.shape, dtype=np.float64)
@@ -1858,11 +1877,12 @@ if __name__ == '__main__':
     # display_BTsv_diff()
     # main_hdf()
     # up_sample()
+    add_noise()
     for i in range(10, 15):
-        # main_calRadiance(i)
-        # main_space(i)
-        # addGeoinfo(i)
-        result_diff(i)
+        main_calRadiance(i)
+        main_space(i)
+        addGeoinfo(i)
+        # result_diff(i)
     # result_diff(14)
     # for i in range(10, 15):
         # addGeoinfo(i)
