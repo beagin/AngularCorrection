@@ -17,17 +17,17 @@ import random
 # ****************************************** 一些声明 **************************************
 # ASTER
 # 2327
-# file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032327_20211109202424_8804.hdf"
-# file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032327_20211109044429_8561.hdf"
-# file_SE_ASTER = "data/ASTER/AST_05_00307062019032327_20211109202540_19729.hdf"
+file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032327_20211109202424_8804.hdf"
+file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032327_20211109044429_8561.hdf"
+file_SE_ASTER = "data/ASTER/AST_05_00307062019032327_20211109202540_19729.hdf"
 # 2318
 # file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032318_20211109202424_8809.hdf"
 # file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032318_20211109044429_8560.hdf"
 # file_SE_ASTER = "data/ASTER/AST_05_00307062019032318_20211109202540_19735.hdf"
 # 2309
-file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032309_20211109202424_8812.hdf"
-file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032309_20211109044449_8628.hdf"
-file_SE_ASTER = "data/ASTER/AST_05_00307062019032309_20211109202540_19741.hdf"
+# file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032309_20211109202424_8812.hdf"
+# file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032309_20211109044449_8628.hdf"
+# file_SE_ASTER = "data/ASTER/AST_05_00307062019032309_20211109202540_19741.hdf"
 
 # MOD09
 file_MOD09_1 = "data/MODIS/MOD09GA.sur_refl_b01_1.tif"
@@ -36,7 +36,7 @@ file_MOD09_SZA = "data/MODIS/MOD09GA.SolarZenith_1.tif"
 file_MOD09_SAA = "data/MODIS/MOD09GA.SolarAzimuth_1.tif"
 file_MOD09_VZA = "data/MODIS/MOD09GA.SensorZenith_1.tif"
 # MOD15
-file_MOD15 = "data/MODIS/LAI_2019185h26v4.Lai_500m.tif"
+file_MOD15 = "data/MODIS/LAI_2019185.Lai_500m.tif"
 
 # 聚集指数
 file_CI = "data/CI/CI_2019185.tif"
@@ -46,11 +46,13 @@ file_LUT = "SRF/LUT12.txt"
 # 判断植被/土壤的NDVI阈值
 threshold_NDVI = 0.45
 threshold_NDVI_min = 0.3
-# 平均组分发射率
+# 各波段平均组分发射率
 # 2318
-SEs_aver = [0.9556206,0.95971876,0.9583313,0.96373886,0.9579294,0.96535045,0.9737943,0.97538644,0.96828395,0.9703193]
+# SEs_aver = [0.9556206,0.95971876,0.9583313,0.96373886,0.9579294,0.96535045,0.9737943,0.97538644,0.96828395,0.9703193]
 # 2309
 # SEs_aver = [0.95921916,0.96219736,0.96382433,0.96685,0.9655643,0.9693147,0.9739296,0.9761412,0.9667597,0.9716622]
+# 2327
+SEs_aver = [0.95891243, 0.96218306, 0.9610082, 0.9646352, 0.961338, 0.96575534, 0.9749102, 0.975972, 0.9701367, 0.9715742]
 
 # ****************************************** 文件操作 **************************************
 
@@ -833,14 +835,6 @@ def calRMSE_new(lst: np.ndarray, lst_0: np.ndarray, VZA: np.ndarray, title: str)
     plt.show()
 
 
-def cal_channelSE():
-    """
-    根据波段发射率计算通道发射率
-    :return:
-    """
-    pass
-
-
 def cal_windowLSTsv(window=5):
     """
     计算一定窗口大小的组分温度
@@ -874,73 +868,13 @@ def cal_windowLSTsv(window=5):
     display_hist(diff[np.abs(diff) < 50], "diff_LSTsv_window")
 
 
-def cal_windowSEsv(window=5):
-    """
-
-    :param window:
-    :return:
-    """
-    _, SEs_10 = open_tiff("pics/SEs_aver_10.tif")
-    _, SEv_10 = open_tiff("pics/SEv_aver_10.tif")
-    _, SEs_11 = open_tiff("pics/SEs_aver_11.tif")
-    _, SEv_11 = open_tiff("pics/SEv_aver_11.tif")
-    _, SEs_12 = open_tiff("pics/SEs_aver_12.tif")
-    _, SEv_12 = open_tiff("pics/SEv_aver_12.tif")
-    _, SEs_13 = open_tiff("pics/SEs_aver_13.tif")
-    _, SEv_13 = open_tiff("pics/SEv_aver_13.tif")
-    _, SEs_14 = open_tiff("pics/SEs_aver_14.tif")
-    _, SEv_14 = open_tiff("pics/SEv_aver_14.tif")
-
-    # 计算5*5的窗口内的组分温度（取极值）
-    SEs_10_window = np.zeros(SEv_10.shape)
-    SEv_10_window = np.zeros(SEv_10.shape)
-    SEs_11_window = np.zeros(SEv_10.shape)
-    SEv_11_window = np.zeros(SEv_10.shape)
-    SEs_12_window = np.zeros(SEv_10.shape)
-    SEv_12_window = np.zeros(SEv_10.shape)
-    SEs_13_window = np.zeros(SEv_10.shape)
-    SEv_13_window = np.zeros(SEv_10.shape)
-    SEs_14_window = np.zeros(SEv_10.shape)
-    SEv_14_window = np.zeros(SEv_10.shape)
-    for y in range(SEv_10.shape[0]):
-        for x in range(SEv_10.shape[1]):
-            # 当前像元对应的窗口索引
-            minY = max(y - int(window / 2), 0)
-            maxY = min(y + int((window + 1) / 2), SEv_10.shape[0])
-            minX = max(x - int(window / 2), 0)
-            maxX = min(x + int((window + 1) / 2), SEv_10.shape[1])
-            cur_SEs_10 = SEs_10[minY:maxY, minX:maxX]
-            cur_SEv_10 = SEv_10[minY:maxY, minX:maxX]
-            cur_SEs_11 = SEs_11[minY:maxY, minX:maxX]
-            cur_SEv_11 = SEv_11[minY:maxY, minX:maxX]
-            cur_SEs_12 = SEs_12[minY:maxY, minX:maxX]
-            cur_SEv_12 = SEv_12[minY:maxY, minX:maxX]
-            cur_SEs_13 = SEs_13[minY:maxY, minX:maxX]
-            cur_SEv_13 = SEv_13[minY:maxY, minX:maxX]
-            cur_SEs_14 = SEs_14[minY:maxY, minX:maxX]
-            cur_SEv_14 = SEv_14[minY:maxY, minX:maxX]
-            # 计算均值
-            SEs_10_window[y, x] = np.mean(cur_SEs_10[cur_SEs_10 > 0])
-            SEv_10_window[y, x] = np.mean(cur_SEv_10[cur_SEv_10 > 0])
-            SEs_11_window[y, x] = np.mean(cur_SEs_11[cur_SEs_11 > 0])
-            SEv_11_window[y, x] = np.mean(cur_SEv_11[cur_SEv_11 > 0])
-            SEs_12_window[y, x] = np.mean(cur_SEs_12[cur_SEs_12 > 0])
-            SEv_12_window[y, x] = np.mean(cur_SEv_12[cur_SEv_12 > 0])
-            SEs_13_window[y, x] = np.mean(cur_SEs_13[cur_SEs_13 > 0])
-            SEv_13_window[y, x] = np.mean(cur_SEv_13[cur_SEv_13 > 0])
-            SEs_14_window[y, x] = np.mean(cur_SEs_14[cur_SEs_14 > 0])
-            SEv_14_window[y, x] = np.mean(cur_SEv_14[cur_SEv_14 > 0])
-
-    write_tiff(SEs_10_window, "SEs_window_10")
-    write_tiff(SEv_10_window, "SEv_window_10")
-    write_tiff(SEs_11_window, "SEs_window_11")
-    write_tiff(SEv_11_window, "SEv_window_11")
-    write_tiff(SEs_12_window, "SEs_window_12")
-    write_tiff(SEv_12_window, "SEv_window_12")
-    write_tiff(SEs_13_window, "SEs_window_13")
-    write_tiff(SEv_13_window, "SEv_window_13")
-    write_tiff(SEs_14_window, "SEs_window_14")
-    write_tiff(SEv_14_window, "SEv_window_14")
+def get_mean_SE():
+    for band in range(10, 15):
+        _, SEs = open_tiff("pics/SEs_up_" + str(band) + ".tif")
+        _, SEv = open_tiff("pics/SEv_up_" + str(band) + ".tif")
+        SEs = SEs[SEs > 0]
+        SEv = SEv[SEv > 0]
+        print(np.mean(SEs), np.mean(SEv))
 
 
 def up_sample():
@@ -1026,10 +960,10 @@ def lst2BTs(lst, band=12):
         BTs = np.zeros(shape, dtype=np.float64)
         for i in range(shape[0]):
             for j in range(shape[1]):
-                index = int((lst[i, j] - 240) * 10)
+                index = int((lst[i, j] - 240) * 1000)
                 BTs[i, j] = LUT[index]
     else:
-        index = int((lst - 240) * 10)
+        index = int((lst - 240) * 1000)
         BTs = LUT[index]
     return BTs
 
@@ -1060,9 +994,9 @@ def BTs2lst(BTs, band=12):
                     lst[i] = 240
                 # 实际BTs更接近后一个
                 if BTs[i] * 2 > LUT[k - 1] + LUT[k]:
-                    lst[i] = 240 + 0.1 * k
+                    lst[i] = 240 + 0.001 * k
                 else:
-                    lst[i] = 240 + 0.1 * (k - 1)
+                    lst[i] = 240 + 0.001 * (k - 1)
         # 转回之前的shape
         lst = lst.reshape(original_shape)
     else:
@@ -1074,9 +1008,9 @@ def BTs2lst(BTs, band=12):
                 lst = 240
             # 实际BTs更接近后一个
             if BTs * 2 > LUT[k - 1] + LUT[k]:
-                lst = 240 + 0.1 * k
+                lst = 240 + 0.001 * k
             else:
-                lst = 240 + 0.1 * (k - 1)
+                lst = 240 + 0.001 * (k - 1)
     return lst
 
 
@@ -1134,8 +1068,8 @@ def generate_angles(shape:tuple, minVZA=55):
     for i in range(shape[0]):
         for j in range(shape[1]):
             # 每个点，根据横纵坐标计算，i为纵坐标
-            VZA[i, j] = minVZA + i * 0.013 + j * 0.033
-    write_tiff(VZA, "VZA")
+            VZA[i, j] = minVZA + i * 0.013*2 + j * 0.033*2
+    write_tiff(VZA, "VZA_up")
     return VZA
 
 
@@ -1323,7 +1257,7 @@ def result_diff(band):
     _, LSTs = open_tiff("pics/LSTs_up.tif")
     # 差值s
     diff = BT_0_space - BT_0    # 实际结果与理想结果差值
-    diff_ori = BT_0 - BT_60     # 模拟/理想的纠正量
+    diff_ori = BT_60 - BT_0     # -模拟/理想的纠正量
     diff_real = BT_0_space - BT_60  # 实际算法纠正量
     diff_clst = LSTs - LSTv     # 组分温度差值
     file_diff = open("pics/diff_corr_simu_" + str(band) + ".txt", 'w')
@@ -1450,7 +1384,7 @@ def main_hdf():
     # LAI与CI数据应当是可以完全对应的
     # </editor-fold>
 
-    # <editor-fold> 对每个MODIS像元：获取对应的CI值，计算fvc_60与fvc_0；计算其对应ASTER像元的平均LSTs, LSTv，进而计算辐亮度
+    # <editor-fold> 对每个MODIS像元：获取对应的CI值，计算fvc_60与fvc_0；计算其对应ASTER像元的组分发射率与温度，输出结果
     # 60度
     theta_60 = 60
     realVZA = generate_angles(LAI.shape)
@@ -1754,9 +1688,9 @@ def main_space(band=12):
     print("RMSE_Radiance_space:\t" + str(RMSE_BT_space))
 
     # 温度对比
-    LST = BTs2lst(BT)
-    LST_0 = BTs2lst(BT_0)
-    LST_space_0 = BTs2lst(BT_0_space)
+    LST = BTs2lst(BT, band)
+    LST_0 = BTs2lst(BT_0, band)
+    LST_space_0 = BTs2lst(BT_0_space, band)
     LST_valid = LST[is_valid > 0]
     LST_0_valid = LST_0[is_valid > 0]
     LST_space_0_valid = LST_space_0[is_valid > 0]
@@ -1816,14 +1750,16 @@ def addGeoinfo(band):
 
     # 写新的文件
     driver = gdal.GetDriverByName("GTiff")
-    ds_BT_0 = driver.Create("pics/BT_0_geo_" + str(band) + ".tif", BT_0.shape[1], BT_0.shape[0], 1, gdal.GDT_Float32)
-    ds_BT_60 = driver.Create("pics/BT_60_geo_" + str(band) + ".tif", BT_0.shape[1], BT_0.shape[0], 1, gdal.GDT_Float32)
-    ds_BT_0_space = driver.Create("pics/BT_0_space_geo_" + str(band) + ".tif", BT_0.shape[1], BT_0.shape[0], 1, gdal.GDT_Float32)
+    ds_BT_0 = driver.Create("pics/geo/BT_0_geo_" + str(band) + ".tif", BT_0.shape[1], BT_0.shape[0], 1, gdal.GDT_Float32)
+    ds_BT_60 = driver.Create("pics/geo/BT_60_geo_" + str(band) + ".tif", BT_0.shape[1], BT_0.shape[0], 1, gdal.GDT_Float32)
+    ds_BT_0_space = driver.Create("pics/geo/BT_0_space_geo_" + str(band) + ".tif", BT_0.shape[1], BT_0.shape[0], 1, gdal.GDT_Float32)
     # 手动添加坐标信息（计算左上角顶点）
     # # 2318
     # geoTrans = (112.0475831299942, 0.01, 0.0, 41.02, 0.0, -0.01)
     # 2309
-    geoTrans = (112.2025831299942, 0.01, 0.0, 41.55, 0.0, -0.01)
+    # geoTrans = (112.2025831299942, 0.01, 0.0, 41.55, 0.0, -0.01)
+    # 2327
+    geoTrans = (111.90104305828597, 0.01, 0.0, 40.485, 0.0, -0.01)
     # 赋值
     ds_BT_0.SetProjection(proj)
     ds_BT_0.SetGeoTransform(geoTrans)
@@ -1840,8 +1776,8 @@ def addGeoinfo(band):
 
 
 def test():
-    _, LSTs = open_tiff("pics/LSTv_up.tif")
-    VZA = generate_angles(LSTs.shape)
+    ds, x = open_tiff(file_MOD15)
+    print(ds.GetGeoTransform())
 
 
 def sensitivity_overall():
@@ -1916,17 +1852,17 @@ def sensitivity_VZA():
 
 if __name__ == '__main__':
     # test()
+    # get_mean_SE()
     # display_FVCdiff()
     # analysis_LSTsv()
     # display_BTsv_diff()
-    main_hdf()
-    up_sample()
+    # main_hdf()
+    # up_sample()
     for i in range(10, 15):
-        main_calRadiance(i)
-        main_space(i)
+        # main_calRadiance(i)
+        # main_space(i)
         # addGeoinfo(i)
+        result_diff(i)
     # result_diff(14)
     # for i in range(10, 15):
         # addGeoinfo(i)
-
-    # main_space(14)

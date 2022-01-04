@@ -98,8 +98,8 @@ def create_LUT(band):
         BTs_all = []
         Ts_all = []
         file.write("Ts\tB(Ts)\n")
-        for i in range(1000):
-            Ts = 240 + i * 0.1
+        for i in range(100000):
+            Ts = 240 + i * 0.001
             BTs = cal_BTs(Ts, band)
             BTs_all.append(BTs)
             Ts_all.append(Ts)
