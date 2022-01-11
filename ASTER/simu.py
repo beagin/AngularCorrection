@@ -17,17 +17,17 @@ import random
 # ****************************************** 一些声明 **************************************
 # ASTER
 # 2327
-# file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032327_20211109202424_8804.hdf"
-# file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032327_20211109044429_8561.hdf"
-# file_SE_ASTER = "data/ASTER/AST_05_00307062019032327_20211109202540_19729.hdf"
+file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032327_20211109202424_8804.hdf"
+file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032327_20211109044429_8561.hdf"
+file_SE_ASTER = "data/ASTER/AST_05_00307062019032327_20211109202540_19729.hdf"
 # 2318
 # file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032318_20211109202424_8809.hdf"
 # file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032318_20211109044429_8560.hdf"
 # file_SE_ASTER = "data/ASTER/AST_05_00307062019032318_20211109202540_19735.hdf"
 # 2309
-file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032309_20211109202424_8812.hdf"
-file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032309_20211109044449_8628.hdf"
-file_SE_ASTER = "data/ASTER/AST_05_00307062019032309_20211109202540_19741.hdf"
+# file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032309_20211109202424_8812.hdf"
+# file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032309_20211109044449_8628.hdf"
+# file_SE_ASTER = "data/ASTER/AST_05_00307062019032309_20211109202540_19741.hdf"
 
 # MOD09
 file_MOD09_1 = "data/MODIS/MOD09GA.sur_refl_b01_1.tif"
@@ -50,9 +50,9 @@ threshold_NDVI_min = 0.3
 # 2318
 # SEs_aver = [0.9556206,0.95971876,0.9583313,0.96373886,0.9579294,0.96535045,0.9737943,0.97538644,0.96828395,0.9703193]
 # 2309
-SEs_aver = [0.95921916,0.96219736,0.96382433,0.96685,0.9655643,0.9693147,0.9739296,0.9761412,0.9667597,0.9716622]
+# SEs_aver = [0.95921916,0.96219736,0.96382433,0.96685,0.9655643,0.9693147,0.9739296,0.9761412,0.9667597,0.9716622]
 # 2327
-# SEs_aver = [0.95891243, 0.96218306, 0.9610082, 0.9646352, 0.961338, 0.96575534, 0.9749102, 0.975972, 0.9701367, 0.9715742]
+SEs_aver = [0.95891243, 0.96218306, 0.9610082, 0.9646352, 0.961338, 0.96575534, 0.9749102, 0.975972, 0.9701367, 0.9715742]
 
 # ****************************************** 文件操作 **************************************
 
@@ -1763,24 +1763,20 @@ def analysis_LSTsv():
     write_tiff(diff_LSTsv, "diff_LSTsv.tif")
 
 
-def addGeoinfo(band):
+def writeGeo(source, target):
     """
-    给tif文件添加地理坐标信息
+    给指定文件添加地理信息
+    :param source:
+    :param target:
     :return:
     """
-    # 打开需要添加信息的文件，包括三种亮温
-    _, BT_0 = open_tiff("pics/BT_0_final_" + str(band) + ".tif")
-    _, BT_60 = open_tiff("pics/BT_final_" + str(band) + ".tif")
-    _, BT_0_space = open_tiff("pics/BT_space_0_final_" + str(band) + ".tif")
+    _, data = open_tiff(source)
     # 用于参考的MODIS LAI数据
     ds_LAI, LAI = open_tiff(file_MOD15)
     proj = ds_LAI.GetProjection()
-
     # 写新的文件
     driver = gdal.GetDriverByName("GTiff")
-    ds_BT_0 = driver.Create("pics/geo/BT_0_geo_" + str(band) + ".tif", BT_0.shape[1], BT_0.shape[0], 1, gdal.GDT_Float32)
-    ds_BT_60 = driver.Create("pics/geo/BT_60_geo_" + str(band) + ".tif", BT_0.shape[1], BT_0.shape[0], 1, gdal.GDT_Float32)
-    ds_BT_0_space = driver.Create("pics/geo/BT_0_space_geo_" + str(band) + ".tif", BT_0.shape[1], BT_0.shape[0], 1, gdal.GDT_Float32)
+    ds_new = driver.Create(target, data.shape[1], data.shape[0], 1, gdal.GDT_Float32)
     # 手动添加坐标信息（计算左上角顶点）
     # # 2318
     # geoTrans = (112.0475831299942, 0.01, 0.0, 41.02, 0.0, -0.01)
@@ -1789,23 +1785,48 @@ def addGeoinfo(band):
     # 2327
     geoTrans = (111.90104305828597, 0.01, 0.0, 40.485, 0.0, -0.01)
     # 赋值
-    ds_BT_0.SetProjection(proj)
-    ds_BT_0.SetGeoTransform(geoTrans)
-    ds_BT_0.GetRasterBand(1).WriteArray(BT_0)
-    del ds_BT_0
-    ds_BT_60.SetProjection(proj)
-    ds_BT_60.SetGeoTransform(geoTrans)
-    ds_BT_60.GetRasterBand(1).WriteArray(BT_60)
-    del ds_BT_60
-    ds_BT_0_space.SetProjection(proj)
-    ds_BT_0_space.SetGeoTransform(geoTrans)
-    ds_BT_0_space.GetRasterBand(1).WriteArray(BT_0_space)
-    del ds_BT_0_space
+    ds_new.SetProjection(proj)
+    ds_new.SetGeoTransform(geoTrans)
+    ds_new.GetRasterBand(1).WriteArray(data)
+    del ds_new
+
+
+def addGeoinfo():
+    """
+    给tif文件添加地理坐标信息
+    :return:
+    """
+    # 添加信息的文件，包括两种植被覆盖度、CI、LAI、两种组分温度、三种亮温
+    writeGeo("pics/FVC_0_up.tif", "pics/geo/FVC_0_up_geo.tif")
+    writeGeo("pics/FVC_60_up.tif", "pics/geo/FVC_60_up_geo.tif")
+    writeGeo("pics/CI_up.tif", "pics/geo/CI_up_geo.tif")
+    writeGeo("pics/LAI_up.tif", "pics/geo/LAI_up_geo.tif")
+    writeGeo("pics/LSTs_up.tif", "pics/geo/LSTs_up_geo.tif")
+    writeGeo("pics/LSTv_up.tif", "pics/geo/LSTv_up_geo.tif")
+    for band in range(10, 15):
+        writeGeo("pics/BT_0_final_" + str(band) + ".tif", "pics/geo/BT_0_geo_" + str(band) + ".tif")
+        writeGeo("pics/BT_final_" + str(band) + ".tif", "pics/geo/BT_60_geo_" + str(band) + ".tif")
+        writeGeo("pics/BT_space_0_final_" + str(band) + ".tif", "pics/geo/BT_0_space_geo_" + str(band) + ".tif")
 
 
 def test():
-    ds, x = open_tiff(file_MOD15)
-    print(ds.GetGeoTransform())
+    _, FVC_0 = open_tiff("pics/LAI.tif")
+
+    # 上采样操作
+    shape = FVC_0.shape
+    print(shape)
+    new_shape = (int(shape[0] / 2), int(shape[1] / 2))
+    new_FVC0 = np.zeros(new_shape, dtype=np.float64)
+    new_valid = np.zeros(new_shape, dtype=np.float64)
+    for i in range(new_shape[0]):
+        for j in range(new_shape[1]):
+            # 当前范围存在有效值
+            # 其他数据取平均值
+            new_FVC0[i, j] = np.mean((FVC_0[i*2:i*2+2, j*2:j*2+2]))
+            new_valid[i, j] = 1
+
+    # 存储上采样后的数据
+    write_tiff(new_FVC0, "LAI_up")
 
 
 def sensitivity_overall():
@@ -1884,14 +1905,14 @@ if __name__ == '__main__':
     # display_FVCdiff()
     # analysis_LSTsv()
     # display_BTsv_diff()
-    main_hdf()
-    up_sample()
-    add_noise()
-    for i in range(10, 15):
-        main_calRadiance(i)
-        main_space(i)
-        # addGeoinfo(i)
+    # main_hdf()
+    # up_sample()
+    # add_noise()
+    # for i in range(10, 15):
+    #     main_calRadiance(i)
+    #     main_space(i)
         # result_diff(i)
+    addGeoinfo()
     # result_diff(14)
     # main_space(14)
     # for i in range(10, 15):
