@@ -10,7 +10,7 @@ from sklearn import metrics
 from PIL import Image
 from osgeo import gdal, gdalconst
 import math
-from code_2020.kernals import Ross_thick, LI_SparseR
+# from code_2020.kernals import Ross_thick, LI_SparseR
 import random
 
 
@@ -785,7 +785,7 @@ def calRMSE(lst: np.ndarray, lst_0: np.ndarray, VZA: np.ndarray, title: str):
     plt.show()
 
 
-def calRMSE_new(lst: np.ndarray, lst_0: np.ndarray, VZA: np.ndarray, title: str):
+def calRMSE_new(lst, lst_0, VZA, title: str):
     """
     计算一组校正前后的lst数据在不同角度下的RMSE，并绘制图像及保存
     :param lst:
@@ -793,8 +793,16 @@ def calRMSE_new(lst: np.ndarray, lst_0: np.ndarray, VZA: np.ndarray, title: str)
     :return:
     """
     print("func calRMSE")
+    # 打开文件
+    _, lst = open_tiff(lst)
+    _, lst_0 = open_tiff(lst_0)
+    _, VZA = open_tiff(VZA)
+    print(np.max(VZA))
+
     maxVZA = int(np.max(VZA) + 0.5)
+    maxVZA = 62
     minVZA = int(np.min(VZA) + 0.5)
+    minVZA = 56
 
     interval_num = maxVZA - minVZA + 1
     lst_intervals = [[] for i in range(interval_num)]
@@ -802,15 +810,16 @@ def calRMSE_new(lst: np.ndarray, lst_0: np.ndarray, VZA: np.ndarray, title: str)
     diff_intervals = [[] for i in range(interval_num)]
 
     for i in range(lst.shape[0]):
-        try:
-            index = int(VZA[i] + 0.5) - minVZA
-            lst_intervals[index].append(lst[i])
-            lst0_intervals[index].append(lst_0[i])
-            diff_intervals[index].append(np.abs(lst[i] - lst_0[i]))
-        except Exception as e:
-            print(e)
-            print(VZA[i])
-            print(index)
+        for j in range(lst.shape[1]):
+            try:
+                index = int(VZA[i, j] + 0.5) - minVZA
+                lst_intervals[index].append(lst[i, j])
+                lst0_intervals[index].append(lst_0[i, j])
+                diff_intervals[index].append(np.abs(lst[i, j] - lst_0[i, j]))
+            except Exception as e:
+                print(e)
+                print(VZA[i, j])
+                print(index)
 
     RMSEs = []
     nums = []
@@ -818,7 +827,7 @@ def calRMSE_new(lst: np.ndarray, lst_0: np.ndarray, VZA: np.ndarray, title: str)
         # print(i)
         # print(len(lst_intervals[i]))
         if len(lst_intervals[i]) == 0:
-            RMSEs.append(RMSEs[-1])
+            RMSEs.append(RMSEs[0])
             nums.append(0)
         else:
             RMSE = np.sqrt(metrics.mean_squared_error(np.array(lst0_intervals[i]), np.array(lst_intervals[i])))
@@ -835,6 +844,7 @@ def calRMSE_new(lst: np.ndarray, lst_0: np.ndarray, VZA: np.ndarray, title: str)
     plt.savefig("pics/" + title + "_RMSE_VZA_1.png")
     plt.show()
     plt.plot(x, nums)
+    plt.xlabel("VZA")
     plt.ylabel("pixel num")
     plt.savefig("pics/pixelNum.png")
     plt.show()
@@ -1248,40 +1258,58 @@ def display_BTsv_diff():
     return
 
 
-def result_diff(band):
+def result_diff():
     """
     结果分析部分，差值等txt导出
     :return:
     """
-    # 结果亮温
-    _, BT_0_space = open_tiff("pics/BT_space_0_final_" + str(band) + ".tif")
-    _, BT_0 = open_tiff("pics/BT_0_final_" + str(band) + ".tif")
-    _, BT_60 = open_tiff("pics/BT_final_" + str(band) + ".tif")
     # 组分温度
     _, LSTv = open_tiff("pics/LSTv_up_noise.tif")
     _, LSTs = open_tiff("pics/LSTs_up_noise.tif")
-    # 差值s
-    diff = BT_0_space - BT_0    # 实际结果与理想结果差值
-    diff_ori = BT_60 - BT_0     # 模拟/理想的纠正量
-    diff_real = BT_0_space - BT_60  # 实际算法纠正量
+    # 覆盖度
+    _, FVC0 = open_tiff("pics/FVC_0_up.tif")
+    _, FVC60 = open_tiff("pics/FVC_60_up.tif")
     diff_clst = LSTs - LSTv     # 组分温度差值
-    file_diff = open("pics/diff_corr_simu_" + str(band) + ".txt", 'w')
+    diff_fvc = FVC60 - FVC0
+
+    # 对应文件
     file_clst = open("pics/diff_CLST.txt", 'w')
-    file_ori = open("pics/diff_simu_diff_" + str(band) + ".txt", 'w')
-    file_real = open("pics/diff_corr_diff_" + str(band) + ".txt", 'w')
-    shape = diff.shape
+    file_fvc = open("pics/diff_FVC.txt", 'w')
+
+    shape = diff_clst.shape
     for i in range(shape[0]):
         for j in range(shape[1]):
-            if BT_0_space[i, j] != 0:
-                file_diff.write(str(diff[i, j]) + ",")
-                file_ori.write(str(diff_ori[i, j]) + ",")
-                file_real.write(str(diff_real[i, j]) + ",")
+            if FVC0[i, j] != 0:
                 file_clst.write(str(diff_clst[i, j]) + ",")
+                file_fvc.write(str(diff_fvc[i, j]) + ",")
 
-    file_diff.close()
-    file_ori.close()
-    file_real.close()
     file_clst.close()
+    file_fvc.close()
+
+    for band in range(10, 15):
+        # 结果亮温
+        _, BT_0_space = open_tiff("pics/BT_space_0_final_" + str(band) + ".tif")
+        _, BT_0 = open_tiff("pics/BT_0_final_" + str(band) + ".tif")
+        _, BT_60 = open_tiff("pics/BT_final_" + str(band) + ".tif")
+
+        # 差值s
+        diff = BT_0_space - BT_0    # 实际结果与理想结果差值
+        diff_ori = BT_60 - BT_0     # 模拟/理想的纠正量
+        diff_real = BT_0_space - BT_60  # 实际算法纠正量
+        file_diff = open("pics/diff_corr_simu_" + str(band) + ".txt", 'w')
+        file_ori = open("pics/diff_simu_diff_" + str(band) + ".txt", 'w')
+        file_real = open("pics/diff_corr_diff_" + str(band) + ".txt", 'w')
+        shape = diff.shape
+        for i in range(shape[0]):
+            for j in range(shape[1]):
+                if BT_0_space[i, j] != 0:
+                    file_diff.write(str(diff[i, j]) + ",")
+                    file_ori.write(str(diff_ori[i, j]) + ",")
+                    file_real.write(str(diff_real[i, j]) + ",")
+
+        file_diff.close()
+        file_ori.close()
+        file_real.close()
 
 
 # </editor-fold>
@@ -1659,7 +1687,7 @@ def main_space(band=12):
     # 记录RMSE的文件
     # file = open("pics/RMSEs_space" + str(band) + ".txt", 'w')
     # file.write("fvc\tRadiance\tRMSE\n")
-    for x in range(15, 500):
+    for x in range(15, 1000):
         point_x = x / 10
         for y in [-x + delta for delta in range(-50, 200)]:
             point_y = y / 10
@@ -1908,11 +1936,13 @@ if __name__ == '__main__':
     # main_hdf()
     # up_sample()
     # add_noise()
-    # for i in range(10, 15):
+    for i in range(10, 15):
     #     main_calRadiance(i)
-    #     main_space(i)
-        # result_diff(i)
-    addGeoinfo()
+        main_space(i)
+    # calRMSE_new("pics/BT_space_0_final_14.tif", "pics/BT_final_14.tif", "pics/VZA_up.tif", "14")
+    # result_diff()
+    # addGeoinfo()
+
     # result_diff(14)
     # main_space(14)
     # for i in range(10, 15):
