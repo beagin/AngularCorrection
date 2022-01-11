@@ -17,17 +17,17 @@ import random
 # ****************************************** 一些声明 **************************************
 # ASTER
 # 2327
-file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032327_20211109202424_8804.hdf"
-file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032327_20211109044429_8561.hdf"
-file_SE_ASTER = "data/ASTER/AST_05_00307062019032327_20211109202540_19729.hdf"
+# file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032327_20211109202424_8804.hdf"
+# file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032327_20211109044429_8561.hdf"
+# file_SE_ASTER = "data/ASTER/AST_05_00307062019032327_20211109202540_19729.hdf"
 # 2318
 # file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032318_20211109202424_8809.hdf"
 # file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032318_20211109044429_8560.hdf"
 # file_SE_ASTER = "data/ASTER/AST_05_00307062019032318_20211109202540_19735.hdf"
 # 2309
-# file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032309_20211109202424_8812.hdf"
-# file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032309_20211109044449_8628.hdf"
-# file_SE_ASTER = "data/ASTER/AST_05_00307062019032309_20211109202540_19741.hdf"
+file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032309_20211109202424_8812.hdf"
+file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032309_20211109044449_8628.hdf"
+file_SE_ASTER = "data/ASTER/AST_05_00307062019032309_20211109202540_19741.hdf"
 
 # MOD09
 file_MOD09_1 = "data/MODIS/MOD09GA.sur_refl_b01_1.tif"
@@ -50,9 +50,9 @@ threshold_NDVI_min = 0.3
 # 2318
 # SEs_aver = [0.9556206,0.95971876,0.9583313,0.96373886,0.9579294,0.96535045,0.9737943,0.97538644,0.96828395,0.9703193]
 # 2309
-# SEs_aver = [0.95921916,0.96219736,0.96382433,0.96685,0.9655643,0.9693147,0.9739296,0.9761412,0.9667597,0.9716622]
+SEs_aver = [0.95921916,0.96219736,0.96382433,0.96685,0.9655643,0.9693147,0.9739296,0.9761412,0.9667597,0.9716622]
 # 2327
-SEs_aver = [0.95891243, 0.96218306, 0.9610082, 0.9646352, 0.961338, 0.96575534, 0.9749102, 0.975972, 0.9701367, 0.9715742]
+# SEs_aver = [0.95891243, 0.96218306, 0.9610082, 0.9646352, 0.961338, 0.96575534, 0.9749102, 0.975972, 0.9701367, 0.9715742]
 
 # ****************************************** 文件操作 **************************************
 
@@ -642,12 +642,15 @@ def getEdges_fvc(BT: np.ndarray, fvc: np.ndarray):
 
     # Tmax
     ndvi_list = np.array([(0.5/interval_num + i /interval_num) for i in range(interval_num)])
-    # 2318 B10
-    Tmax_aver[0] = 13
-    Tmax_aver[-1] = 9.25
+    # # 2318 B10
+    # Tmax_aver[0] = 13
+    # Tmax_aver[-1] = 9.25
     # # 2309
     # Tmax_aver[0] = 9.6
     # Tmax_aver[-1] = 8.86
+    # 2327
+    Tmax_aver[0] = 11.6
+    Tmax_aver[-1] = 10.05
 
     print(ndvi_list)
     # ndvi值（x轴）
@@ -671,12 +674,14 @@ def getEdges_fvc(BT: np.ndarray, fvc: np.ndarray):
     # Tmin
     ndvi_list = np.array([(0.5/interval_num + i /interval_num) for i in range(interval_num)])
     # 2318 B10
-    Tmin_aver[-1] = 8.1
+    # Tmin_aver[-1] = 8.1
     # 2318 B14
     # Tmin_aver[0] = 8.7
     # # 2309
     # Tmin_aver[0] = 8.0
     # Tmin_aver[-1] = 7.36
+    # 2327
+    Tmin_aver[-1] = 9.8
 
     # ndvi值（x轴）
     while True:
@@ -1253,11 +1258,11 @@ def result_diff(band):
     _, BT_0 = open_tiff("pics/BT_0_final_" + str(band) + ".tif")
     _, BT_60 = open_tiff("pics/BT_final_" + str(band) + ".tif")
     # 组分温度
-    _, LSTv = open_tiff("pics/LSTv_up.tif")
-    _, LSTs = open_tiff("pics/LSTs_up.tif")
+    _, LSTv = open_tiff("pics/LSTv_up_noise.tif")
+    _, LSTs = open_tiff("pics/LSTs_up_noise.tif")
     # 差值s
     diff = BT_0_space - BT_0    # 实际结果与理想结果差值
-    diff_ori = BT_60 - BT_0     # -模拟/理想的纠正量
+    diff_ori = BT_60 - BT_0     # 模拟/理想的纠正量
     diff_real = BT_0_space - BT_60  # 实际算法纠正量
     diff_clst = LSTs - LSTv     # 组分温度差值
     file_diff = open("pics/diff_corr_simu_" + str(band) + ".txt", 'w')
@@ -1449,6 +1454,7 @@ def main_hdf():
                     # 去除图像边缘点
                     if lst_aster[y_aster, x_aster] == 250:
                         continue
+                    # 当前ASTER像元
                     # 判断纬度是否在范围内
                     if cur_minLat <= lat_aster[y_aster, x_aster] <= cur_maxLat:
                         # 判断经度是否在范围内
@@ -1466,7 +1472,7 @@ def main_hdf():
                             # 针对ASTER三个波段反射率、nir波段反射率方差进行筛选
                             # 去除水体、阴影、云、FVC异常值（来自CI、LAI的异常像元）
                             if (not (np.mean(cur_vis) < 0.2 and np.mean(cur_nir) < 0.2 and np.mean(cur_red) < 0.2)) and \
-                                    (not (np.mean(cur_vis) > 0.3 and np.mean(cur_nir) > 0.25 and np.mean(cur_red) > 0.25))\
+                                    (not (np.mean(cur_vis) > 0.17 and np.mean(cur_nir) > 0.28 and np.mean(cur_red) > 0.17))\
                                     and cur_std < 0.05 and FVC_60[y_modis, x_modis] > 0 and FVC_0[y_modis, x_modis] < 0.95:
                                 is_valid[y_modis, x_modis] = True
                                 # 根据平均NDVI值判断是植被还是土壤
@@ -1642,6 +1648,9 @@ def main_space(band=12):
     # 计算特征空间中的顶点
     point_x, point_y = cal_vertex(k1, c1, k2, c2)
     print(point_x, point_y)
+    # 自动提取
+    # point_x = 9
+    # point_y = 0.8
 
     # 寻找最优顶点
     best_x = 0
@@ -1650,7 +1659,7 @@ def main_space(band=12):
     # 记录RMSE的文件
     # file = open("pics/RMSEs_space" + str(band) + ".txt", 'w')
     # file.write("fvc\tRadiance\tRMSE\n")
-    for x in range(15, 300):
+    for x in range(15, 500):
         point_x = x / 10
         for y in [-x + delta for delta in range(-50, 200)]:
             point_y = y / 10
@@ -1875,14 +1884,15 @@ if __name__ == '__main__':
     # display_FVCdiff()
     # analysis_LSTsv()
     # display_BTsv_diff()
-    # main_hdf()
-    # up_sample()
+    main_hdf()
+    up_sample()
     add_noise()
     for i in range(10, 15):
         main_calRadiance(i)
         main_space(i)
-        addGeoinfo(i)
+        # addGeoinfo(i)
         # result_diff(i)
     # result_diff(14)
+    # main_space(14)
     # for i in range(10, 15):
         # addGeoinfo(i)
