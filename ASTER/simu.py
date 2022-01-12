@@ -1463,6 +1463,8 @@ def main_hdf():
             SEs_13 = []
             SEv_14 = []
             SEs_14 = []
+            # 像元中invalid的个数
+            invalidNum = 0
             # 当前MODIS像元坐标范围
             cur_minLon = geotrans_LAI[0] + geotrans_LAI[1] * (min_x_2-1+x_modis-0.5)
             cur_maxLon = geotrans_LAI[0] + geotrans_LAI[1] * (min_x_2-1+x_modis+0.5)
@@ -1518,6 +1520,9 @@ def main_hdf():
                                     SEs_12.append(SE_12[y_aster, x_aster])
                                     SEs_13.append(SE_13[y_aster, x_aster])
                                     SEs_14.append(SE_14[y_aster, x_aster])
+                            # 无效像元
+                            else:
+                                invalidNum += 1
                         # 经度不在范围内
                         else:
                             # 当前行已经匹配完了
@@ -1530,24 +1535,30 @@ def main_hdf():
                     else:
                         continue
 
+                # 判断无效ASTER像元个数，大于一定量就将整个MODIS像元设为无效
+                if invalidNum > 5:
+                    is_valid[y_modis, x_modis] = False
+                    break
+
             # 存储当前像元的组分温度(极值)与组分发射率（均值）
             # 组分温度为所有像元的极值，组分发射率为对应组分的均值
-            if len(LSTs) > 0:
-                LSTv_all[y_modis, x_modis] = np.min(LSTs)
-                LSTs_all[y_modis, x_modis] = np.max(LSTs)
+            if is_valid[y_modis, x_modis]:
+                if len(LSTs) > 0:
+                    LSTv_all[y_modis, x_modis] = np.min(LSTs)
+                    LSTs_all[y_modis, x_modis] = np.max(LSTs)
 
-            if len(SEv_10) > 0:
-                SEv_aver_10[y_modis, x_modis] = np.mean(SEv_10)
-                SEv_aver_11[y_modis, x_modis] = np.mean(SEv_11)
-                SEv_aver_12[y_modis, x_modis] = np.mean(SEv_12)
-                SEv_aver_13[y_modis, x_modis] = np.mean(SEv_13)
-                SEv_aver_14[y_modis, x_modis] = np.mean(SEv_14)
-            if len(SEs_10) > 0:
-                SEs_aver_10[y_modis, x_modis] = np.mean(SEs_10)
-                SEs_aver_11[y_modis, x_modis] = np.mean(SEs_11)
-                SEs_aver_12[y_modis, x_modis] = np.mean(SEs_12)
-                SEs_aver_13[y_modis, x_modis] = np.mean(SEs_13)
-                SEs_aver_14[y_modis, x_modis] = np.mean(SEs_14)
+                if len(SEv_10) > 0:
+                    SEv_aver_10[y_modis, x_modis] = np.mean(SEv_10)
+                    SEv_aver_11[y_modis, x_modis] = np.mean(SEv_11)
+                    SEv_aver_12[y_modis, x_modis] = np.mean(SEv_12)
+                    SEv_aver_13[y_modis, x_modis] = np.mean(SEv_13)
+                    SEv_aver_14[y_modis, x_modis] = np.mean(SEv_14)
+                if len(SEs_10) > 0:
+                    SEs_aver_10[y_modis, x_modis] = np.mean(SEs_10)
+                    SEs_aver_11[y_modis, x_modis] = np.mean(SEs_11)
+                    SEs_aver_12[y_modis, x_modis] = np.mean(SEs_12)
+                    SEs_aver_13[y_modis, x_modis] = np.mean(SEs_13)
+                    SEs_aver_14[y_modis, x_modis] = np.mean(SEs_14)
 
     print("done component temperature calculation")
     # </editor-fold>
