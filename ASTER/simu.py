@@ -10,24 +10,24 @@ from sklearn import metrics
 from PIL import Image
 from osgeo import gdal, gdalconst
 import math
-# from code_2020.kernals import Ross_thick, LI_SparseR
+from code_2020.kernals import Ross_thick, LI_SparseR
 import random
 
 
 # ****************************************** 一些声明 **************************************
 # ASTER
 # 2327
-file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032327_20211109202424_8804.hdf"
-file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032327_20211109044429_8561.hdf"
-file_SE_ASTER = "data/ASTER/AST_05_00307062019032327_20211109202540_19729.hdf"
+# file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032327_20211109202424_8804.hdf"
+# file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032327_20211109044429_8561.hdf"
+# file_SE_ASTER = "data/ASTER/AST_05_00307062019032327_20211109202540_19729.hdf"
 # 2318
 # file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032318_20211109202424_8809.hdf"
 # file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032318_20211109044429_8560.hdf"
 # file_SE_ASTER = "data/ASTER/AST_05_00307062019032318_20211109202540_19735.hdf"
 # 2309
-# file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032309_20211109202424_8812.hdf"
-# file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032309_20211109044449_8628.hdf"
-# file_SE_ASTER = "data/ASTER/AST_05_00307062019032309_20211109202540_19741.hdf"
+file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032309_20211109202424_8812.hdf"
+file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032309_20211109044449_8628.hdf"
+file_SE_ASTER = "data/ASTER/AST_05_00307062019032309_20211109202540_19741.hdf"
 
 # MOD09
 file_MOD09_1 = "data/MODIS/MOD09GA.sur_refl_b01_1.tif"
@@ -50,9 +50,9 @@ threshold_NDVI_min = 0.3
 # 2318
 # SEs_aver = [0.9556206,0.95971876,0.9583313,0.96373886,0.9579294,0.96535045,0.9737943,0.97538644,0.96828395,0.9703193]
 # 2309
-# SEs_aver = [0.95921916,0.96219736,0.96382433,0.96685,0.9655643,0.9693147,0.9739296,0.9761412,0.9667597,0.9716622]
+SEs_aver = [0.95921916,0.96219736,0.96382433,0.96685,0.9655643,0.9693147,0.9739296,0.9761412,0.9667597,0.9716622]
 # 2327
-SEs_aver = [0.95891243, 0.96218306, 0.9610082, 0.9646352, 0.961338, 0.96575534, 0.9749102, 0.975972, 0.9701367, 0.9715742]
+# SEs_aver = [0.95891243, 0.96218306, 0.9610082, 0.9646352, 0.961338, 0.96575534, 0.9749102, 0.975972, 0.9701367, 0.9715742]
 
 # ****************************************** 文件操作 **************************************
 
@@ -1419,7 +1419,6 @@ def main_hdf():
 
     # <editor-fold> 对每个MODIS像元：获取对应的CI值，计算fvc_60与fvc_0；计算其对应ASTER像元的组分发射率与温度，输出结果
     # 60度
-    theta_60 = 60
     realVZA = generate_angles(LAI.shape)
     # 0度
     theta_0 = 0
@@ -1564,7 +1563,6 @@ def main_hdf():
     # </editor-fold>
 
     # <editor-fold> 中间结果输出
-
     # 出图
     write_tiff(LSTv_all, "LSTv_all")
     write_tiff(LSTs_all, "LSTs_all")
@@ -1578,7 +1576,6 @@ def main_hdf():
     write_tiff(SEv_aver_12, "SEv_aver_12")
     write_tiff(SEv_aver_13, "SEv_aver_13")
     write_tiff(SEv_aver_14, "SEv_aver_14")
-
     write_tiff(is_valid, "is_valid")
 
     # </editor-fold>
@@ -1944,15 +1941,15 @@ if __name__ == '__main__':
     # display_FVCdiff()
     # analysis_LSTsv()
     # display_BTsv_diff()
-    # main_hdf()
-    # up_sample()
-    # add_noise()
+    main_hdf()
+    up_sample()
+    add_noise()
     for i in range(10, 15):
-    #     main_calRadiance(i)
+        main_calRadiance(i)
         main_space(i)
-    # calRMSE_new("pics/BT_space_0_final_14.tif", "pics/BT_final_14.tif", "pics/VZA_up.tif", "14")
     # result_diff()
     # addGeoinfo()
+    # calRMSE_new("pics/BT_space_0_final_14.tif", "pics/BT_final_14.tif", "pics/VZA_up.tif", "14")
 
     # result_diff(14)
     # main_space(14)
