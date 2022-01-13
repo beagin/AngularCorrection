@@ -12,6 +12,8 @@ from osgeo import gdal, gdalconst
 import math
 from code_2020.kernals import Ross_thick, LI_SparseR
 import random
+import warnings
+warnings.filterwarnings("ignore")   # 忽略warning
 
 
 # ****************************************** 一些声明 **************************************
@@ -141,8 +143,7 @@ def write_tiff(data: np.ndarray, filename: str):
 
 
 # ****************************************** 计算函数 **************************************
-# <editor-fold>
-
+# <editor-fold> 计算函数
 
 def cal_NDVI(data_red, data_nir):
     """
@@ -639,7 +640,6 @@ def getEdges_fvc(BT: np.ndarray, fvc: np.ndarray):
                     break
             Tmin_aver.append(np.mean(minTs))
 
-
     # Tmax
     ndvi_list = np.array([(0.5/interval_num + i /interval_num) for i in range(interval_num)])
     # # 2318 B10
@@ -975,58 +975,47 @@ def lst2BTs(lst, band=12):
         BTs = np.zeros(shape, dtype=np.float64)
         for i in range(shape[0]):
             for j in range(shape[1]):
-                index = int((lst[i, j] - 240) * 1000)
+                index = int((lst[i, j] - 270) * 1000)
                 BTs[i, j] = LUT[index]
     else:
-        index = int((lst - 240) * 1000)
+        index = int((lst - 270) * 1000)
         BTs = LUT[index]
     return BTs
 
 
-def BTs2lst(BTs, band=12):
+def BTs2lst_real(BTs, band=12, angle=0):
     """
-    transform BTs data into lst data
+    辐亮度转换为地表温度，需考虑发射率
     :param BTs:
     :return:
     """
     fileName = "SRF/LUT" + str(band) + ".txt"
+    if angle == 0:
+        _, SE =open_tiff("pics/SE_0_" + str(band) + ".tif")
+    else:
+        _, SE =open_tiff("pics/SE_60_" + str(band) + ".tif")
     LUT = get_LUT(fileName)
     if type(BTs) == np.ndarray:
+        # 辐亮度除以发射率，再进行到地表温度的转换
+        BTs = BTs / SE
+        # 记录初始数组大小，再转换为一维
         original_shape = BTs.shape
         BTs = BTs.reshape(-1)
         shape = BTs.shape
         lst = np.zeros(shape, dtype=np.float64)
-        # 只考虑一维数组的情况
+        # 一维数组
         for i in range(shape[0]):
             if BTs[i] <= 0:
                 lst[i] = 0
                 continue
-            for k in range(len(LUT)):
-                if LUT[k] > BTs[i]:
-                    continue
-                # LUT中的BTs第一次大于BTs
-                if k == 0:
-                    lst[i] = 240
-                # 实际BTs更接近后一个
-                if BTs[i] * 2 > LUT[k - 1] + LUT[k]:
-                    lst[i] = 240 + 0.001 * k
-                else:
-                    lst[i] = 240 + 0.001 * (k - 1)
+            # 找到最近的温度值对应的索引
+            index = np.searchsorted(np.array(LUT), BTs[i])
+            lst[i] = 270 + 0.001 * index
         # 转回之前的shape
         lst = lst.reshape(original_shape)
+        return lst
     else:
-        for k in range(len(LUT)):
-            if LUT[k] > BTs:
-                continue
-            # LUT中的BTs第一次大于BTs
-            if k == 0:
-                lst = 240
-            # 实际BTs更接近后一个
-            if BTs * 2 > LUT[k - 1] + LUT[k]:
-                lst = 240 + 0.001 * k
-            else:
-                lst = 240 + 0.001 * (k - 1)
-    return lst
+        return None
 
 
 def get_aster_lat_lon(sds):
@@ -1286,23 +1275,24 @@ def result_diff():
     file_clst.close()
     file_fvc.close()
 
+    # 每个波段输出地表温度差值
     for band in range(10, 15):
-        # 结果亮温
-        _, BT_0_space = open_tiff("pics/BT_space_0_final_" + str(band) + ".tif")
-        _, BT_0 = open_tiff("pics/BT_0_final_" + str(band) + ".tif")
-        _, BT_60 = open_tiff("pics/BT_final_" + str(band) + ".tif")
+        # 地表温度结果
+        _, LST_0_space = open_tiff("pics/LST_space_0_final_" + str(band) + ".tif")
+        _, LST_0 = open_tiff("pics/LST_0_final_" + str(band) + ".tif")
+        _, LST_60 = open_tiff("pics/LST_final_" + str(band) + ".tif")
 
         # 差值s
-        diff = BT_0_space - BT_0    # 实际结果与理想结果差值
-        diff_ori = BT_60 - BT_0     # 模拟/理想的纠正量
-        diff_real = BT_0_space - BT_60  # 实际算法纠正量
+        diff = LST_0_space - LST_0    # 实际结果与理想结果差值
+        diff_ori = LST_60 - LST_0     # 模拟/理想的纠正量
+        diff_real = LST_0_space - LST_60  # 实际算法纠正量
         file_diff = open("pics/diff_corr_simu_" + str(band) + ".txt", 'w')
         file_ori = open("pics/diff_simu_diff_" + str(band) + ".txt", 'w')
         file_real = open("pics/diff_corr_diff_" + str(band) + ".txt", 'w')
         shape = diff.shape
         for i in range(shape[0]):
             for j in range(shape[1]):
-                if BT_0_space[i, j] != 0:
+                if LST_0_space[i, j] != 0:
                     file_diff.write(str(diff[i, j]) + ",")
                     file_ori.write(str(diff_ori[i, j]) + ",")
                     file_real.write(str(diff_real[i, j]) + ",")
@@ -1603,7 +1593,7 @@ def add_noise():
 
 def main_calRadiance(band=12):
     """
-    从平均组分温度、组分发射率、植被覆盖度来计算辐亮度
+    从平均组分温度、组分发射率、植被覆盖度来计算辐亮度及等效发射率
     :return:
     """
     print("radiance calculation for band " + str(band))
@@ -1619,7 +1609,9 @@ def main_calRadiance(band=12):
     # 存储计算出来的两个角度辐亮度的数组
     BT_0 = np.zeros(LSTs.shape, dtype=np.float64)
     BT_60 = np.zeros(LSTs.shape, dtype=np.float64)
-    # 遍历每个像元，计算辐亮度
+    SE = np.zeros(LSTs.shape, dtype=np.float64)
+    SE_0 = np.zeros(LSTs.shape, dtype=np.float64)
+    # 遍历每个像元，计算辐亮度与等效发射率
     for y in range(LSTs.shape[0]):
         for x in range(LSTs.shape[1]):
             # 是有效像元才进行计算
@@ -1632,15 +1624,19 @@ def main_calRadiance(band=12):
                 #
                 BT_0[y, x] = FVC_0[y, x] * BTv * cur_SEv + (1 - FVC_0[y, x]) * BTs * cur_SEs
                 BT_60[y, x] = FVC_60[y, x] * BTv * cur_SEv + (1 - FVC_60[y, x]) * BTs * cur_SEs
-                if BT_60[y,x] == 0 and BT_0[y, x] != 0:
-                    print(BT_0[y,x])
-                    print(BTs, BTv, FVC_0[y, x], FVC_60[y, x], SEv[y, x], SEs[y, x])
-                # BT_0[y, x] = FVC_0[y, x] * BTv + (1 - FVC_0[y, x]) * BTs
-                # BT_60[y, x] = FVC_60[y, x] * BTv + (1 - FVC_60[y, x]) * BTs
+                # if BT_60[y,x] == 0 and BT_0[y, x] != 0:
+                #     print(BT_0[y,x])
+                #     print(BTs, BTv, FVC_0[y, x], FVC_60[y, x], SEv[y, x], SEs[y, x])
+                # 计算等效发射率
+                SE[y, x] = FVC_60[y, x] * cur_SEv + (1 - FVC_60[y, x]) * cur_SEs
+                SE_0[y, x] = FVC_0[y, x] * cur_SEv + (1 - FVC_0[y, x]) * cur_SEs
+
             # 其他情况都不考虑
 
     write_tiff(BT_0, "BT_0_" + str(band))
     write_tiff(BT_60, "BT_60_" + str(band))
+    write_tiff(SE, "SE_60_" + str(band))
+    write_tiff(SE_0, "SE_0_" + str(band))
 
 
 def main_space(band=12):
@@ -1648,6 +1644,8 @@ def main_space(band=12):
     得到模拟结果后，进行特征空间相关处理
     :return:
     """
+    # <editor-fold> 读取数据，自动提取顶点
+
     print("space construction for band " + str(band))
     # 读取相关数据：某一波段的多角度辐亮度
     ds_BT, BT = open_tiff("pics/BT_60_" + str(band) + ".tif")
@@ -1668,6 +1666,11 @@ def main_space(band=12):
     BT_0_valid = BT_0[is_valid > 0]
     fvc_valid = fvc[is_valid > 0]
     fvc_0_valid = fvc_0[is_valid > 0]
+    # 辐亮度转为地表温度
+    LST = BTs2lst_real(BT, band, 60)
+    LST_0 = BTs2lst_real(BT_0, band, 0)
+    LST_valid = LST[is_valid > 0]
+    LST_0_valid = LST_0[is_valid > 0]
 
     # 0-60图绘制
     display_lines_0_60(BT_0_valid, BT_valid, fvc_0_valid, fvc_valid, band)
@@ -1684,6 +1687,9 @@ def main_space(band=12):
     # 计算特征空间中的顶点
     point_x, point_y = cal_vertex(k1, c1, k2, c2)
     print(point_x, point_y)
+
+    # </editor-fold>
+
     # 自动提取
     # point_x = 9
     # point_y = 0.8
@@ -1691,28 +1697,32 @@ def main_space(band=12):
     # 寻找最优顶点
     best_x = 0
     best_y = 0
-    best_RMSE = 2
+    best_RMSE = 5
     # 记录RMSE的文件
     # file = open("pics/RMSEs_space" + str(band) + ".txt", 'w')
     # file.write("fvc\tRadiance\tRMSE\n")
-    for x in range(15, 1000):
+    for x in range(1000, 1200):
         point_x = x / 10
         for y in [-x + delta for delta in range(-50, 200)]:
             point_y = y / 10
-            BT_0_space = np.zeros(BT_0_valid.shape, dtype=np.float64)
-            for i in range(BT_0_valid.shape[0]):
-                # FVC过大的点直接去除
-                if fvc_0_valid[i] > point_x or fvc_valid[i] > point_x:
-                    continue
-                k, c = cal_params(point_y, point_x, BT_valid[i], fvc_valid[i])
-                BT_0_space[i] = k * fvc_0_valid[i] + c
-            RMSE_BT_space_0 = np.sqrt(metrics.mean_squared_error(BT_0_valid, BT_0_space))
+            BT_0_space = np.zeros(BT_0.shape, dtype=np.float64)
+            for i in range(BT_0.shape[0]):
+                for j in range(BT_0.shape[1]):
+                    # FVC过大的点直接去除
+                    if fvc_0[i, j] > point_x or fvc[i, j] > point_x or is_valid[i, j] <= 0:
+                        continue
+                    k, c = cal_params(point_y, point_x, BT[i, j], fvc[i, j])
+                    BT_0_space[i, j] = k * fvc_0[i, j] + c
+            # 转换为地表温度，求地表温度的最小误差
+            cur_LST = BTs2lst_real(BT_0_space, band, 0)
+            RMSE_LST_space_0 = np.sqrt(metrics.mean_squared_error(cur_LST[is_valid > 0], LST_0_valid))
+            # RMSE_BT_space_0 = np.sqrt(metrics.mean_squared_error(BT_0, BT_0_space))
             # file.write("%f\t%f\t%f\n" % (point_x, point_y, RMSE_BT_space_0))
             # 根据fvc_0与特征空间计算垂直方向辐亮度
-            if RMSE_BT_space_0 < best_RMSE:
+            if RMSE_LST_space_0 < best_RMSE:
                 best_x = point_x
                 best_y = point_y
-                best_RMSE = RMSE_BT_space_0
+                best_RMSE = RMSE_LST_space_0
 
     # file.close()
     print("best x: " + str(best_x))
@@ -1721,7 +1731,7 @@ def main_space(band=12):
     point_x = best_x
     point_y = best_y
 
-    # 计算纠正后的Radiance
+    # <editor-fold> 计算纠正后的Radiance
     BT_0_space = np.zeros(is_valid.shape, dtype=np.float64)
     for i in range(BT_0_space.shape[0]):
         for j in range(BT_0_space.shape[1]):
@@ -1734,6 +1744,7 @@ def main_space(band=12):
                 continue
             k, c = cal_params(point_y, point_x, BT[i, j], fvc[i, j])
             BT_0_space[i, j] = k * fvc_0[i, j] + c
+    # </editor-fold>
 
     # <editor-fold> 结果定量分析
     BT_0_space_valid = BT_0_space[is_valid > 0]
@@ -1752,11 +1763,9 @@ def main_space(band=12):
     print("RMSE_Radiance_space:\t" + str(RMSE_BT_space))
 
     # 温度对比
-    LST = BTs2lst(BT, band)
-    LST_0 = BTs2lst(BT_0, band)
-    LST_space_0 = BTs2lst(BT_0_space, band)
-    LST_valid = LST[is_valid > 0]
-    LST_0_valid = LST_0[is_valid > 0]
+
+    LST_space_0 = BTs2lst_real(BT_0_space, band, 0)
+
     LST_space_0_valid = LST_space_0[is_valid > 0]
 
     display_hist(LST_space_0_valid - LST_0_valid, "BT_diff_space_0_" + str(band))
@@ -1772,9 +1781,9 @@ def main_space(band=12):
 
     # 出图
     write_tiff(BT_0_space, "Radiance_0_space_" + str(band))
-    write_tiff(LST, "BT_final_" + str(band))
-    write_tiff(LST_0, "BT_0_final_" + str(band))
-    write_tiff(LST_space_0, "BT_space_0_final_" + str(band))
+    write_tiff(LST, "LST_final_" + str(band))
+    write_tiff(LST_0, "LST_0_final_" + str(band))
+    write_tiff(LST_space_0, "LST_space_0_final_" + str(band))
 
 
 def analysis_LSTsv():
@@ -1840,9 +1849,9 @@ def addGeoinfo():
     writeGeo("pics/LSTs_up.tif", "pics/geo/LSTs_up_geo.tif")
     writeGeo("pics/LSTv_up.tif", "pics/geo/LSTv_up_geo.tif")
     for band in range(10, 15):
-        writeGeo("pics/BT_0_final_" + str(band) + ".tif", "pics/geo/BT_0_geo_" + str(band) + ".tif")
-        writeGeo("pics/BT_final_" + str(band) + ".tif", "pics/geo/BT_60_geo_" + str(band) + ".tif")
-        writeGeo("pics/BT_space_0_final_" + str(band) + ".tif", "pics/geo/BT_0_space_geo_" + str(band) + ".tif")
+        writeGeo("pics/LST_0_final_" + str(band) + ".tif", "pics/geo/LST_0_geo_" + str(band) + ".tif")
+        writeGeo("pics/LST_final_" + str(band) + ".tif", "pics/geo/LST_60_geo_" + str(band) + ".tif")
+        writeGeo("pics/LST_space_0_final_" + str(band) + ".tif", "pics/geo/LST_0_space_geo_" + str(band) + ".tif")
 
 
 def test():
@@ -1938,20 +1947,16 @@ def sensitivity_VZA():
 if __name__ == '__main__':
     # test()
     # get_mean_SE()
-    # display_FVCdiff()
-    # analysis_LSTsv()
     # display_BTsv_diff()
-    main_hdf()
-    up_sample()
-    add_noise()
-    for i in range(10, 15):
-        main_calRadiance(i)
-        main_space(i)
-    # result_diff()
-    # addGeoinfo()
-    # calRMSE_new("pics/BT_space_0_final_14.tif", "pics/BT_final_14.tif", "pics/VZA_up.tif", "14")
 
-    # result_diff(14)
-    # main_space(14)
-    # for i in range(10, 15):
-        # addGeoinfo(i)
+    # 全流程
+    # main_hdf()
+    # up_sample()
+    # add_noise()
+    for i in range(10, 11):
+        # main_calRadiance(i)
+        main_space(i)
+    result_diff()
+    addGeoinfo()
+
+    # calRMSE_new("pics/BT_space_0_final_14.tif", "pics/BT_final_14.tif", "pics/VZA_up.tif", "14")

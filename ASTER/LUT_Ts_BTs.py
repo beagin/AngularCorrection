@@ -55,7 +55,7 @@ def convert1channel():
     将一个波段的SRF文件转为可用于批处理的txt文件
     :return:
     """
-
+    pass
 
 
 def cal_BTs(Ts, band):
@@ -98,14 +98,12 @@ def create_LUT(band):
         BTs_all = []
         Ts_all = []
         file.write("Ts\tB(Ts)\n")
-        for i in range(100000):
-            Ts = 240 + i * 0.001
+        for i in range(60000):
+            Ts = 270 + i * 0.001
             BTs = cal_BTs(Ts, band)
             BTs_all.append(BTs)
             Ts_all.append(Ts)
             file.write(str(Ts) + "\t" + str(BTs) + "\n")
-    # print(BTs_all)
-    # print(Ts_all)
 
     plt.plot(Ts_all, BTs_all)
     plt.xlabel("Ts")
