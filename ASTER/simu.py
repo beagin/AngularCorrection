@@ -1698,12 +1698,16 @@ def main_space(band=12):
     best_x = 0
     best_y = 0
     best_RMSE = 5
+    preRMSE = 100
     # 记录RMSE的文件
     # file = open("pics/RMSEs_space" + str(band) + ".txt", 'w')
     # file.write("fvc\tRadiance\tRMSE\n")
-    for x in range(1000, 1200):
+    for x in range(1002, 1005):
         point_x = x / 10
-        for y in [-x + delta for delta in range(-50, 200)]:
+        print("x: " + str(x))
+        for y in [-x + delta for delta in range(0, 400)]:
+            if y % 10 == 0:
+                print("y: " + str(y))
             point_y = y / 10
             BT_0_space = np.zeros(BT_0.shape, dtype=np.float64)
             for i in range(BT_0.shape[0]):
@@ -1723,6 +1727,12 @@ def main_space(band=12):
                 best_x = point_x
                 best_y = point_y
                 best_RMSE = RMSE_LST_space_0
+            # 如果RMSE大于上一个，则后面都是递增
+            if RMSE_LST_space_0 > preRMSE:
+                preRMSE = 100
+                break
+            else:
+                preRMSE = RMSE_LST_space_0
 
     # file.close()
     print("best x: " + str(best_x))
@@ -1953,8 +1963,9 @@ if __name__ == '__main__':
     # main_hdf()
     # up_sample()
     # add_noise()
-    for i in range(10, 11):
-        # main_calRadiance(i)
+    main_space(10)
+    for i in range(11, 15):
+        main_calRadiance(i)
         main_space(i)
     result_diff()
     addGeoinfo()
