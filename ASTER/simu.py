@@ -23,13 +23,13 @@ warnings.filterwarnings("ignore")   # 忽略warning
 # file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032327_20211109044429_8561.hdf"
 # file_SE_ASTER = "data/ASTER/AST_05_00307062019032327_20211109202540_19729.hdf"
 # 2318
-# file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032318_20211109202424_8809.hdf"
-# file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032318_20211109044429_8560.hdf"
-# file_SE_ASTER = "data/ASTER/AST_05_00307062019032318_20211109202540_19735.hdf"
+file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032318_20211109202424_8809.hdf"
+file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032318_20211109044429_8560.hdf"
+file_SE_ASTER = "data/ASTER/AST_05_00307062019032318_20211109202540_19735.hdf"
 # 2309
-file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032309_20211109202424_8812.hdf"
-file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032309_20211109044449_8628.hdf"
-file_SE_ASTER = "data/ASTER/AST_05_00307062019032309_20211109202540_19741.hdf"
+# file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032309_20211109202424_8812.hdf"
+# file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032309_20211109044449_8628.hdf"
+# file_SE_ASTER = "data/ASTER/AST_05_00307062019032309_20211109202540_19741.hdf"
 
 # MOD09
 file_MOD09_1 = "data/MODIS/MOD09GA.sur_refl_b01_1.tif"
@@ -50,14 +50,15 @@ threshold_NDVI = 0.45
 threshold_NDVI_min = 0.3
 # 各波段平均组分发射率
 # 2318
-# SEs_aver = [0.9556206,0.95971876,0.9583313,0.96373886,0.9579294,0.96535045,0.9737943,0.97538644,0.96828395,0.9703193]
+SEs_aver = [0.9556206,0.95971876,0.9583313,0.96373886,0.9579294,0.96535045,0.9737943,0.97538644,0.96828395,0.9703193]
 # 2309
-SEs_aver = [0.95921916,0.96219736,0.96382433,0.96685,0.9655643,0.9693147,0.9739296,0.9761412,0.9667597,0.9716622]
+# SEs_aver = [0.95921916,0.96219736,0.96382433,0.96685,0.9655643,0.9693147,0.9739296,0.9761412,0.9667597,0.9716622]
 # 2327
 # SEs_aver = [0.95891243, 0.96218306, 0.9610082, 0.9646352, 0.961338, 0.96575534, 0.9749102, 0.975972, 0.9701367, 0.9715742]
 
-# ****************************************** 文件操作 **************************************
 
+# ****************************************** 文件操作 **************************************
+# <editor-fold> 文件操作
 
 def open_tiff(filePath:str):
     """
@@ -141,6 +142,7 @@ def write_tiff(data: np.ndarray, filename: str):
     Image.fromarray(data).save("pics/" + filename + '.tif')
     # misc.imsave(filename + ".tif", data)
 
+# </editor-fold>
 
 # ****************************************** 计算函数 **************************************
 # <editor-fold> 计算函数
@@ -1702,10 +1704,10 @@ def main_space(band=12):
     # 记录RMSE的文件
     # file = open("pics/RMSEs_space" + str(band) + ".txt", 'w')
     # file.write("fvc\tRadiance\tRMSE\n")
-    for x in range(1002, 1005):
+    for x in range(502, 505):
         point_x = x / 10
         print("x: " + str(x))
-        for y in [-x + delta for delta in range(0, 400)]:
+        for y in [-x + delta for delta in range(-130, 300)]:
             if y % 10 == 0:
                 print("y: " + str(y))
             point_y = y / 10
@@ -1834,11 +1836,11 @@ def writeGeo(source, target):
     ds_new = driver.Create(target, data.shape[1], data.shape[0], 1, gdal.GDT_Float32)
     # 手动添加坐标信息（计算左上角顶点）
     # # 2318
-    # geoTrans = (112.0475831299942, 0.01, 0.0, 41.02, 0.0, -0.01)
+    geoTrans = (112.0475831299942, 0.01, 0.0, 41.02, 0.0, -0.01)
     # 2309
     # geoTrans = (112.2025831299942, 0.01, 0.0, 41.55, 0.0, -0.01)
     # 2327
-    geoTrans = (111.90104305828597, 0.01, 0.0, 40.485, 0.0, -0.01)
+    # geoTrans = (111.90104305828597, 0.01, 0.0, 40.485, 0.0, -0.01)
     # 赋值
     ds_new.SetProjection(proj)
     ds_new.SetGeoTransform(geoTrans)
@@ -1854,8 +1856,8 @@ def addGeoinfo():
     # 添加信息的文件，包括两种植被覆盖度、CI、LAI、两种组分温度、三种亮温
     writeGeo("pics/FVC_0_up.tif", "pics/geo/FVC_0_up_geo.tif")
     writeGeo("pics/FVC_60_up.tif", "pics/geo/FVC_60_up_geo.tif")
-    writeGeo("pics/CI_up.tif", "pics/geo/CI_up_geo.tif")
-    writeGeo("pics/LAI_up.tif", "pics/geo/LAI_up_geo.tif")
+    # writeGeo("pics/CI_up.tif", "pics/geo/CI_up_geo.tif")
+    # writeGeo("pics/LAI_up.tif", "pics/geo/LAI_up_geo.tif")
     writeGeo("pics/LSTs_up.tif", "pics/geo/LSTs_up_geo.tif")
     writeGeo("pics/LSTv_up.tif", "pics/geo/LSTv_up_geo.tif")
     for band in range(10, 15):
@@ -1963,7 +1965,6 @@ if __name__ == '__main__':
     # main_hdf()
     # up_sample()
     # add_noise()
-    main_space(10)
     for i in range(11, 15):
         main_calRadiance(i)
         main_space(i)
