@@ -14,3 +14,4 @@ ASTER/SRF/
 *.docx
 *.tmp
 Application/data/
+*.pyc

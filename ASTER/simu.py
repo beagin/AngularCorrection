@@ -19,13 +19,13 @@ warnings.filterwarnings("ignore")   # 忽略warning
 # ****************************************** 一些声明 **************************************
 # ASTER
 # 2327
-# file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032327_20211109202424_8804.hdf"
-# file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032327_20211109044429_8561.hdf"
-# file_SE_ASTER = "data/ASTER/AST_05_00307062019032327_20211109202540_19729.hdf"
+file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032327_20211109202424_8804.hdf"
+file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032327_20211109044429_8561.hdf"
+file_SE_ASTER = "data/ASTER/AST_05_00307062019032327_20211109202540_19729.hdf"
 # 2318
-file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032318_20211109202424_8809.hdf"
-file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032318_20211109044429_8560.hdf"
-file_SE_ASTER = "data/ASTER/AST_05_00307062019032318_20211109202540_19735.hdf"
+# file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032318_20211109202424_8809.hdf"
+# file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032318_20211109044429_8560.hdf"
+# file_SE_ASTER = "data/ASTER/AST_05_00307062019032318_20211109202540_19735.hdf"
 # 2309
 # file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032309_20211109202424_8812.hdf"
 # file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032309_20211109044449_8628.hdf"
@@ -50,11 +50,11 @@ threshold_NDVI = 0.45
 threshold_NDVI_min = 0.3
 # 各波段平均组分发射率
 # 2318
-SEs_aver = [0.9556206,0.95971876,0.9583313,0.96373886,0.9579294,0.96535045,0.9737943,0.97538644,0.96828395,0.9703193]
+# SEs_aver = [0.9556206,0.95971876,0.9583313,0.96373886,0.9579294,0.96535045,0.9737943,0.97538644,0.96828395,0.9703193]
 # 2309
 # SEs_aver = [0.95921916,0.96219736,0.96382433,0.96685,0.9655643,0.9693147,0.9739296,0.9761412,0.9667597,0.9716622]
 # 2327
-# SEs_aver = [0.95891243, 0.96218306, 0.9610082, 0.9646352, 0.961338, 0.96575534, 0.9749102, 0.975972, 0.9701367, 0.9715742]
+SEs_aver = [0.95891243, 0.96218306, 0.9610082, 0.9646352, 0.961338, 0.96575534, 0.9749102, 0.975972, 0.9701367, 0.9715742]
 
 
 # ****************************************** 文件操作 **************************************
@@ -141,6 +141,76 @@ def write_tiff(data: np.ndarray, filename: str):
     """
     Image.fromarray(data).save("pics/" + filename + '.tif')
     # misc.imsave(filename + ".tif", data)
+
+
+def write_txt_VZA():
+    """
+    将有效VZA数据输出至txt文件
+    :return:
+    """
+    _, valid = open_tiff("pics/is_valid_up.tif")
+    _, VZA = open_tiff("pics/VZA_up.tif")
+    VZA_valid = VZA[valid > 0]
+    with open("VZA_up.txt", 'w') as file:
+        for x in VZA_valid:
+            file.write(str(x) + ",")
+    return
+
+
+def result_diff():
+    """
+    结果分析部分，差值等txt导出
+    :return:
+    """
+    # 组分温度
+    _, LSTv = open_tiff("pics/LSTv_up_noise.tif")
+    _, LSTs = open_tiff("pics/LSTs_up_noise.tif")
+    # 覆盖度
+    _, FVC0 = open_tiff("pics/FVC_0_up.tif")
+    _, FVC60 = open_tiff("pics/FVC_60_up.tif")
+    diff_clst = LSTs - LSTv     # 组分温度差值
+    diff_fvc = FVC60 - FVC0
+
+    # 对应文件
+    file_clst = open("pics/diff_CLST.txt", 'w')
+    file_fvc = open("pics/diff_FVC.txt", 'w')
+
+    shape = diff_clst.shape
+    for i in range(shape[0]):
+        for j in range(shape[1]):
+            if FVC0[i, j] != 0:
+                file_clst.write(str(diff_clst[i, j]) + ",")
+                file_fvc.write(str(diff_fvc[i, j]) + ",")
+
+    file_clst.close()
+    file_fvc.close()
+
+    # 每个波段输出地表温度差值
+    for band in range(10, 15):
+        # 地表温度结果
+        _, LST_0_space = open_tiff("pics/LST_space_0_final_" + str(band) + ".tif")
+        _, LST_0 = open_tiff("pics/LST_0_final_" + str(band) + ".tif")
+        _, LST_60 = open_tiff("pics/LST_final_" + str(band) + ".tif")
+
+        # 差值s
+        diff = LST_0_space - LST_0    # 实际结果与理想结果差值
+        diff_ori = LST_60 - LST_0     # 模拟/理想的纠正量
+        diff_real = LST_0_space - LST_60  # 实际算法纠正量
+        file_diff = open("pics/diff_corr_simu_" + str(band) + ".txt", 'w')
+        file_ori = open("pics/diff_simu_diff_" + str(band) + ".txt", 'w')
+        file_real = open("pics/diff_corr_diff_" + str(band) + ".txt", 'w')
+        shape = diff.shape
+        for i in range(shape[0]):
+            for j in range(shape[1]):
+                if LST_0_space[i, j] != 0:
+                    file_diff.write(str(diff[i, j]) + ",")
+                    file_ori.write(str(diff_ori[i, j]) + ",")
+                    file_real.write(str(diff_real[i, j]) + ",")
+
+        file_diff.close()
+        file_ori.close()
+        file_real.close()
+
 
 # </editor-fold>
 
@@ -654,7 +724,6 @@ def getEdges_fvc(BT: np.ndarray, fvc: np.ndarray):
     Tmax_aver[0] = 11.6
     Tmax_aver[-1] = 10.05
 
-    print(ndvi_list)
     # ndvi值（x轴）
     while True:
         # do linear regression
@@ -673,6 +742,7 @@ def getEdges_fvc(BT: np.ndarray, fvc: np.ndarray):
         if not discard_max:
             break
 
+
     # Tmin
     ndvi_list = np.array([(0.5/interval_num + i /interval_num) for i in range(interval_num)])
     # 2318 B10
@@ -683,7 +753,8 @@ def getEdges_fvc(BT: np.ndarray, fvc: np.ndarray):
     # Tmin_aver[0] = 8.0
     # Tmin_aver[-1] = 7.36
     # 2327
-    Tmin_aver[-1] = 9.8
+    Tmin_aver[0] = 9.5
+    Tmin_aver[-1] = 7.5
 
     # ndvi值（x轴）
     while True:
@@ -691,8 +762,11 @@ def getEdges_fvc(BT: np.ndarray, fvc: np.ndarray):
         # print(ndvi_list)
         # print(Tmin_aver)
         k2, c2, r_value, p_value, std_err = stats.linregress(ndvi_list, np.array(Tmin_aver))
+        print(k2, c2)
         y = k2 * ndvi_list + c2
         # calculate RMSE
+        # print(Tmin_aver)
+        # print(y)
         RMSE = np.sqrt(metrics.mean_squared_error(np.array(Tmin_aver), y))
         # do discard
         discard_min = False
@@ -905,6 +979,7 @@ def up_sample():
     _, FVC_60 = open_tiff("pics/FVC.tif")
     _, FVC_0 = open_tiff("pics/FVC_0.tif")
     _, is_valid = open_tiff("pics/is_valid.tif")
+    _, VZA = open_tiff("pics/VZA.tif")
 
     # 上采样操作
     shape = LSTs.shape
@@ -915,6 +990,7 @@ def up_sample():
     new_FVC60 = np.zeros(new_shape, dtype=np.float64)
     new_FVC0 = np.zeros(new_shape, dtype=np.float64)
     new_valid = np.zeros(new_shape, dtype=np.float64)
+    new_VZA = np.zeros(new_shape, dtype=np.float64)
     for i in range(new_shape[0]):
         for j in range(new_shape[1]):
             # 取范围内的有效值
@@ -924,6 +1000,7 @@ def up_sample():
                 # 其他数据取平均值
                 new_FVC60[i, j] = np.mean((FVC_60[i*2:i*2+2, j*2:j*2+2])[cur_valid > 0])
                 new_FVC0[i, j] = np.mean((FVC_0[i*2:i*2+2, j*2:j*2+2])[cur_valid > 0])
+                new_VZA[i, j] = np.mean((VZA[i*2:i*2+2, j*2:j*2+2]))
                 new_valid[i, j] = 1
                 # 组分LST需进行特殊处理
                 new_LSTs[i, j] = np.max(LSTs[i*2:i*2+2, j*2:j*2+2])
@@ -957,6 +1034,7 @@ def up_sample():
         write_tiff(new_SEs, "SEs_up_" + str(band))
         write_tiff(new_SEv, "SEv_up_" + str(band))
     write_tiff(new_valid, "is_valid_up")
+    write_tiff(new_VZA, "VZA_up")
 
 # </editor-fold>    计算
 
@@ -1074,8 +1152,8 @@ def generate_angles(shape:tuple, minVZA=55):
     for i in range(shape[0]):
         for j in range(shape[1]):
             # 每个点，根据横纵坐标计算，i为纵坐标
-            VZA[i, j] = minVZA + i * 0.013*2 + j * 0.033*2
-    write_tiff(VZA, "VZA_up")
+            VZA[i, j] = minVZA + i * 0.013 + j * 0.033
+    write_tiff(VZA, "VZA")
     return VZA
 
 
@@ -1249,60 +1327,6 @@ def display_BTsv_diff():
     return
 
 
-def result_diff():
-    """
-    结果分析部分，差值等txt导出
-    :return:
-    """
-    # 组分温度
-    _, LSTv = open_tiff("pics/LSTv_up_noise.tif")
-    _, LSTs = open_tiff("pics/LSTs_up_noise.tif")
-    # 覆盖度
-    _, FVC0 = open_tiff("pics/FVC_0_up.tif")
-    _, FVC60 = open_tiff("pics/FVC_60_up.tif")
-    diff_clst = LSTs - LSTv     # 组分温度差值
-    diff_fvc = FVC60 - FVC0
-
-    # 对应文件
-    file_clst = open("pics/diff_CLST.txt", 'w')
-    file_fvc = open("pics/diff_FVC.txt", 'w')
-
-    shape = diff_clst.shape
-    for i in range(shape[0]):
-        for j in range(shape[1]):
-            if FVC0[i, j] != 0:
-                file_clst.write(str(diff_clst[i, j]) + ",")
-                file_fvc.write(str(diff_fvc[i, j]) + ",")
-
-    file_clst.close()
-    file_fvc.close()
-
-    # 每个波段输出地表温度差值
-    for band in range(10, 15):
-        # 地表温度结果
-        _, LST_0_space = open_tiff("pics/LST_space_0_final_" + str(band) + ".tif")
-        _, LST_0 = open_tiff("pics/LST_0_final_" + str(band) + ".tif")
-        _, LST_60 = open_tiff("pics/LST_final_" + str(band) + ".tif")
-
-        # 差值s
-        diff = LST_0_space - LST_0    # 实际结果与理想结果差值
-        diff_ori = LST_60 - LST_0     # 模拟/理想的纠正量
-        diff_real = LST_0_space - LST_60  # 实际算法纠正量
-        file_diff = open("pics/diff_corr_simu_" + str(band) + ".txt", 'w')
-        file_ori = open("pics/diff_simu_diff_" + str(band) + ".txt", 'w')
-        file_real = open("pics/diff_corr_diff_" + str(band) + ".txt", 'w')
-        shape = diff.shape
-        for i in range(shape[0]):
-            for j in range(shape[1]):
-                if LST_0_space[i, j] != 0:
-                    file_diff.write(str(diff[i, j]) + ",")
-                    file_ori.write(str(diff_ori[i, j]) + ",")
-                    file_real.write(str(diff_real[i, j]) + ",")
-
-        file_diff.close()
-        file_ori.close()
-        file_real.close()
-
 
 # </editor-fold>
 
@@ -1411,7 +1435,7 @@ def main_hdf():
 
     # <editor-fold> 对每个MODIS像元：获取对应的CI值，计算fvc_60与fvc_0；计算其对应ASTER像元的组分发射率与温度，输出结果
     # 60度
-    realVZA = generate_angles(LAI.shape)
+    realVZA = generate_angles(LAI.shape, 55)
     # 0度
     theta_0 = 0
 
@@ -1737,9 +1761,14 @@ def main_space(band=12):
                 preRMSE = RMSE_LST_space_0
 
     # file.close()
-    print("best x: " + str(best_x))
-    print("best y: " + str(best_y))
-    print("best RMSE: " + str(best_RMSE))
+
+    # 输出结果至txt文件
+    resultFile = open("results_best.txt", "a")
+    resultFile.write("B" + str(band) + "\n")
+    resultFile.write("best x: " + str(best_x) + "\n")
+    resultFile.write("best y: " + str(best_y) + "\n")
+    resultFile.write("best RMSE: " + str(best_RMSE) + "\n")
+
     point_x = best_x
     point_y = best_y
 
@@ -1763,16 +1792,16 @@ def main_space(band=12):
     # 计算结果与模拟结果进行对比
     RMSE_BT_space_0 = np.sqrt(metrics.mean_squared_error(BT_0_valid, BT_0_space_valid))
     display_hist(BT_0_space_valid - BT_0_valid, "Radiance_diff_space_0_" + str(band))
-    print("RMSE_Radiance_space_0:\t" + str(RMSE_BT_space_0))
+    resultFile.write("RMSE_Radiance_space_0:\t" + str(RMSE_BT_space_0) + "\n")
     # 原始数据与模拟结果的对比
     display_hist(BT_0_valid - BT_valid, "Radiance_diff_0_" + str(band))
     RMSE_BT_0 = np.sqrt(metrics.mean_squared_error(BT_valid, BT_0_valid))
-    print("RMSE_Radiance_0:\t\t" + str(RMSE_BT_0))
+    resultFile.write("RMSE_Radiance_0:\t\t" + str(RMSE_BT_0) + "\n")
 
     # 原始数据与特征空间结果的对比【不需要】
     display_hist(BT_0_space_valid - BT_valid, "Radiance_diff_space_" + str(band))
     RMSE_BT_space = np.sqrt(metrics.mean_squared_error(BT_valid, BT_0_space_valid))
-    print("RMSE_Radiance_space:\t" + str(RMSE_BT_space))
+    resultFile.write("RMSE_Radiance_space:\t" + str(RMSE_BT_space) + "\n\n")
 
     # 温度对比
 
@@ -1782,13 +1811,13 @@ def main_space(band=12):
 
     display_hist(LST_space_0_valid - LST_0_valid, "BT_diff_space_0_" + str(band))
     RMSE_LST_space_0 = np.sqrt(metrics.mean_squared_error(LST_space_0_valid, LST_0_valid))
-    print("RMSE_BT_space_0:\t\t" + str(RMSE_LST_space_0))
+    resultFile.write("RMSE_LST_space_0:\t\t" + str(RMSE_LST_space_0) + "\n")
     display_hist(LST_0_valid - LST_valid, "BT_diff_0_" + str(band))
     RMSE_LST_0 = np.sqrt(metrics.mean_squared_error(LST_0_valid, LST_valid))
-    print("RMSE_BT_0:\t\t" + str(RMSE_LST_0))
+    resultFile.write("RMSE_LST_0:\t\t" + str(RMSE_LST_0) + "\n")
     display_hist(LST_space_0_valid - LST_valid, "BT_diff_space_" + str(band))
     RMSE_LST_space = np.sqrt(metrics.mean_squared_error(LST_space_0_valid, LST_valid))
-    print("RMSE_BT_space:\t\t" + str(RMSE_LST_space))
+    resultFile.write("RMSE_LST_space:\t\t" + str(RMSE_LST_space) + "\n")
     # </editor-fold>
 
     # 出图
@@ -1796,7 +1825,7 @@ def main_space(band=12):
     write_tiff(LST, "LST_final_" + str(band))
     write_tiff(LST_0, "LST_0_final_" + str(band))
     write_tiff(LST_space_0, "LST_space_0_final_" + str(band))
-
+    resultFile.close()
 
 def analysis_LSTsv():
     """
@@ -1836,11 +1865,11 @@ def writeGeo(source, target):
     ds_new = driver.Create(target, data.shape[1], data.shape[0], 1, gdal.GDT_Float32)
     # 手动添加坐标信息（计算左上角顶点）
     # # 2318
-    geoTrans = (112.0475831299942, 0.01, 0.0, 41.02, 0.0, -0.01)
+    # geoTrans = (112.0475831299942, 0.01, 0.0, 41.02, 0.0, -0.01)
     # 2309
     # geoTrans = (112.2025831299942, 0.01, 0.0, 41.55, 0.0, -0.01)
     # 2327
-    # geoTrans = (111.90104305828597, 0.01, 0.0, 40.485, 0.0, -0.01)
+    geoTrans = (111.90104305828597, 0.01, 0.0, 40.485, 0.0, -0.01)
     # 赋值
     ds_new.SetProjection(proj)
     ds_new.SetGeoTransform(geoTrans)
@@ -1966,9 +1995,10 @@ if __name__ == '__main__':
     # up_sample()
     # add_noise()
     for i in range(11, 15):
-        main_calRadiance(i)
+        # main_calRadiance(i)
         main_space(i)
     result_diff()
-    addGeoinfo()
+    # addGeoinfo()
+    write_txt_VZA()
 
     # calRMSE_new("pics/BT_space_0_final_14.tif", "pics/BT_final_14.tif", "pics/VZA_up.tif", "14")
