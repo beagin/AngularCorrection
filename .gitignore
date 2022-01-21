@@ -15,3 +15,4 @@ ASTER/SRF/
 *.tmp
 Application/data/
 *.pyc
+Application/pics/

@@ -2,7 +2,7 @@
 Func: to calculate the radiance for every temperature and create lookup table
 """
 
-from hdf_gdal import cal_Planck
+from .hdf_gdal import cal_Planck
 import os
 import matplotlib.pyplot as plt
 
