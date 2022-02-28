@@ -723,8 +723,8 @@ def getEdges_fvc(BT: np.ndarray, fvc: np.ndarray):
     # Tmax_aver[0] = 9.6
     # Tmax_aver[-1] = 8.86
     # 2327
-    Tmax_aver[0] = 11.6
-    Tmax_aver[-1] = 10.05
+    Tmax_aver[0] = 13.2
+    Tmax_aver[-1] = 11.2
 
     # ndvi值（x轴）
     while True:
@@ -755,8 +755,8 @@ def getEdges_fvc(BT: np.ndarray, fvc: np.ndarray):
     # Tmin_aver[0] = 8.0
     # Tmin_aver[-1] = 7.36
     # 2327
-    Tmin_aver[0] = 9.5
-    Tmin_aver[-1] = 7.5
+    Tmin_aver[0] = 7.9
+    Tmin_aver[-1] = 7
 
     # ndvi值（x轴）
     while True:
@@ -1211,8 +1211,8 @@ def scatter_BTs_fvc(BT, fvc, k1, c1, k2, c2, band=12, edge=True, angle=0):
 
     # scatter
 
-    # ndvi[ndvi<=0]=np.nan
-    # ndvi[ndvi>=1]=np.nan
+    fvc = fvc[BT > 0]
+    BT = BT[BT > 0]
 
     plt.scatter(fvc, BT, color="cornflowerblue", s=1.)
     if edge:
@@ -1435,7 +1435,7 @@ def main_hdf():
 
     # <editor-fold> 对每个MODIS像元：获取对应的CI值，计算fvc_60与fvc_0；计算其对应ASTER像元的组分发射率与温度，输出结果
     # 60度
-    realVZA = generate_angles(LAI.shape, 55)
+    realVZA = generate_angles(LAI.shape, 30)
     # 0度
     theta_0 = 0
 
@@ -1720,7 +1720,7 @@ def main_space(band=12):
     # point_x = 9
     # point_y = 0.8
 
-    # 寻找最优顶点
+    # <editor-fold> 寻找最优顶点
     best_x = 0
     best_y = 0
     best_RMSE = 5
@@ -1761,7 +1761,6 @@ def main_space(band=12):
                 preRMSE = RMSE_LST_space_0
 
     # file.close()
-
     # 输出结果至txt文件
     resultFile = open("pics/results_best.txt", "a")
     resultFile.write("B" + str(band) + "\n")
@@ -1771,6 +1770,8 @@ def main_space(band=12):
 
     point_x = best_x
     point_y = best_y
+
+    # </editor-fold>
 
     # <editor-fold> 计算纠正后的Radiance
     BT_0_space = np.zeros(is_valid.shape, dtype=np.float64)
@@ -1999,6 +2000,7 @@ if __name__ == '__main__':
         main_space(i)
     result_diff()
     addGeoinfo()
+
     write_txt_VZA()
 
     # calRMSE_new("pics/BT_space_0_final_14.tif", "pics/BT_final_14.tif", "pics/VZA_up.tif", "14")

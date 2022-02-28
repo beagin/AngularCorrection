@@ -135,6 +135,7 @@ if __name__ == "__main__":
     # 6.594058038074137
     # BTs = cal_BTs(310)
     # print(BTs)
-    for i in range(10, 15):
-        create_LUT(i)
+    plot_L_wv()
+    # for i in range(10, 15):
+    #     create_LUT(i)
     # plot_L_wv()
