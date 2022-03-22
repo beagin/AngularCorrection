@@ -2,6 +2,7 @@
 
 import pandas as pd
 import numpy as np
+import os
 from enum import Enum
 from scipy import stats, misc
 import matplotlib.pyplot as plt
@@ -153,7 +154,7 @@ def write_txt_VZA():
     VZA_valid = VZA[valid > 0]
     with open("pics/VZA_up.txt", 'w') as file:
         for x in VZA_valid:
-            file.write(str(x) + ",")
+            file.write(str(x) + "\n")
     return
 
 
@@ -181,8 +182,8 @@ def result_diff():
     for i in range(shape[0]):
         for j in range(shape[1]):
             if FVC0[i, j] != 0 and valid[i, j] != 0:
-                file_clst.write(str(diff_clst[i, j]) + ",")
-                file_fvc.write(str(diff_fvc[i, j]) + ",")
+                file_clst.write(str(diff_clst[i, j]) + "\n")
+                file_fvc.write(str(diff_fvc[i, j]) + "\n")
 
     file_clst.close()
     file_fvc.close()
@@ -205,9 +206,9 @@ def result_diff():
         for i in range(shape[0]):
             for j in range(shape[1]):
                 if LST_0_space[i, j] != 0 and valid[i, j] != 0:
-                    file_diff.write(str(diff[i, j]) + ",")
-                    file_ori.write(str(diff_ori[i, j]) + ",")
-                    file_real.write(str(diff_real[i, j]) + ",")
+                    file_diff.write(str(diff[i, j]) + "\n")
+                    file_ori.write(str(diff_ori[i, j]) + "\n")
+                    file_real.write(str(diff_real[i, j]) + "\n")
 
         file_diff.close()
         file_ori.close()
@@ -1605,9 +1606,9 @@ def add_noise():
     _, LSTv = open_tiff("pics/LSTv_up.tif")
     _, LSTs = open_tiff("pics/LSTs_up.tif")
     # 添加噪声
-    noise = np.random.normal(1, 1, LSTs.shape)
+    noise = np.random.normal(0, 1, LSTs.shape)
     LSTv_new = LSTv + noise
-    noise = np.random.normal(1, 1, LSTs.shape)
+    noise = np.random.normal(0, 1, LSTs.shape)
     LSTs_new = LSTs + noise
     # 有效区域外重新赋值
     LSTv_new[LSTv==0] = 0
@@ -1868,9 +1869,9 @@ def writeGeo(source, target):
     # # 2318
     # geoTrans = (112.0475831299942, 0.01, 0.0, 41.02, 0.0, -0.01)
     # 2309
-    geoTrans = (112.2025831299942, 0.01, 0.0, 41.55, 0.0, -0.01)
+    # geoTrans = (112.2025831299942, 0.01, 0.0, 41.55, 0.0, -0.01)
     # 2327
-    # geoTrans = (111.90104305828597, 0.01, 0.0, 40.485, 0.0, -0.01)
+    geoTrans = (111.90104305828597, 0.01, 0.0, 40.485, 0.0, -0.01)
     # 赋值
     ds_new.SetProjection(proj)
     ds_new.SetGeoTransform(geoTrans)
@@ -1888,8 +1889,8 @@ def addGeoinfo():
     writeGeo("pics/FVC_60_up.tif", "pics/geo/FVC_60_up_geo.tif")
     # writeGeo("pics/CI_up.tif", "pics/geo/CI_up_geo.tif")
     # writeGeo("pics/LAI_up.tif", "pics/geo/LAI_up_geo.tif")
-    writeGeo("pics/LSTs_up.tif", "pics/geo/LSTs_up_geo.tif")
-    writeGeo("pics/LSTv_up.tif", "pics/geo/LSTv_up_geo.tif")
+    writeGeo("pics/LSTs_up_noise.tif", "pics/geo/LSTs_up_geo.tif")  # 增加了噪声的温度数据
+    writeGeo("pics/LSTv_up_noise.tif", "pics/geo/LSTv_up_geo.tif")
     for band in range(10, 15):
         writeGeo("pics/LST_0_final_" + str(band) + ".tif", "pics/geo/LST_0_geo_" + str(band) + ".tif")
         writeGeo("pics/LST_final_" + str(band) + ".tif", "pics/geo/LST_60_geo_" + str(band) + ".tif")
@@ -1897,23 +1898,21 @@ def addGeoinfo():
 
 
 def test():
-    _, FVC_0 = open_tiff("pics/LAI.tif")
-
-    # 上采样操作
-    shape = FVC_0.shape
-    print(shape)
-    new_shape = (int(shape[0] / 2), int(shape[1] / 2))
-    new_FVC0 = np.zeros(new_shape, dtype=np.float64)
-    new_valid = np.zeros(new_shape, dtype=np.float64)
-    for i in range(new_shape[0]):
-        for j in range(new_shape[1]):
-            # 当前范围存在有效值
-            # 其他数据取平均值
-            new_FVC0[i, j] = np.mean((FVC_0[i*2:i*2+2, j*2:j*2+2]))
-            new_valid[i, j] = 1
-
-    # 存储上采样后的数据
-    write_tiff(new_FVC0, "LAI_up")
+    folderPath = "..\\ASTER\\pics\\v3.11_2309\\30\\"
+    filelist = os.listdir(folderPath)
+    print(filelist)
+    for file in filelist:
+        if file.split('.')[-1] != 'txt' or file.split('.')[0] == 'results_best':
+            continue
+        else:
+            ori = open((folderPath + file), 'r')
+            new = open(folderPath + "newTxt\\" + file, 'w')
+            lines = ori.readlines()
+            for line in lines:
+                new.write(line.replace(',', '\n'))
+            ori.close()
+            new.close()
+    return
 
 
 def sensitivity_overall():
@@ -1986,10 +1985,45 @@ def sensitivity_VZA():
     fig.savefig('pics/sensitivity/boxplot_VZA60.png', dpi=400)
 
 
+def analyze_VZA():
+    """
+    计算每个VZA区间内的所有误差值及纠正量的均值，用于作图
+    :return:
+    """
+    # 一定影像、一定角度的VZA、LST差值txt文件
+    folder = "..\\ASTER\\pics\\v3.11_2327\\55\\newTxt\\"
+    VZA = open(folder + "VZA_up.txt", 'r')
+    VZAs = [float(line) for line in VZA.readlines()]
+    minVZA = int(min(VZAs)+0.49)
+    print(minVZA)
+    for i in range(10, 15):
+        diff = open(folder + "diff_corr_simu_" + str(i) + ".txt", 'r')
+        # diff = open(folder + "diff_corr_diff_" + str(i) + ".txt", 'r')
+        diffs = [float(line) for line in diff.readlines()]
+        # 记录数据
+        values = [[] for j in range(minVZA, int(max(VZAs)+0.49)+1)]
+        for j in range(len(VZAs)):
+            index = int(VZAs[j] + 0.49) - minVZA
+            values[index].append(diffs[j])
+            # 计算纠正比例
+        # 计算每个区间的均值，写入文件
+        result_file = open(folder + "VZA_diff_cs_" + str(i) + ".txt", 'w')
+        result_median = open(folder + "VZA_diff_cs_median_" + str(i) + ".txt", 'w')
+        for x in values:
+            print(len(x))
+            result_file.write(str(np.mean(x)) + "\n")
+            result_median.write(str(np.median(x)) +"\n")
+        result_file.close()
+        diff.close()
+    VZA.close()
+
+
 if __name__ == '__main__':
     # test()
     # get_mean_SE()
     # display_BTsv_diff()
+    # analyze_VZA()
+
 
     # 全流程
     main_hdf()
@@ -2000,7 +2034,6 @@ if __name__ == '__main__':
         main_space(i)
     result_diff()
     addGeoinfo()
-
     write_txt_VZA()
 
     # calRMSE_new("pics/BT_space_0_final_14.tif", "pics/BT_final_14.tif", "pics/VZA_up.tif", "14")

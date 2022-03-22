@@ -6,9 +6,9 @@ from ASTER.simu import *
 
 # 文件路径
 # 河套平原
-string_folder = "data/Hetao_2019/A2019187/"
+# string_folder = "data/Hetao_2019/A2019187/"
 # 张掖
-# string_folder = "data/Zhangye_2019/A2019222/"
+string_folder = "data/Zhangye_2019/A2019222/"
 
 File_LST = string_folder + "LST.tif"
 File_VZA = string_folder + "VZA.tif"
@@ -475,10 +475,22 @@ def test_landsat():
     gdal.Warp("pics/L9_test.tif", ds)
 
 
+def test():
+    ori = open("pics/v1.2_Zhangye/VZA.txt", 'r')
+    new = open("pics/v1.2_Zhangye/VZA_group.txt", 'w')
+    lines = ori.readlines()
+    for line in lines:
+        item = float(line.split()[0])
+        new.write(str(int(item)) + "\n")
+    ori.close()
+    new.close()
+
+
 if __name__ == '__main__':
     # hdf_reproj()
-    # process_all(1)
+    process_all(1)
     # create_LUT()
     # process_space()
     # export()
-    exportGeo(1)
+    # exportGeo(1)
+    # test()
