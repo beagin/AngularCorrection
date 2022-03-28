@@ -1435,8 +1435,8 @@ def main_hdf():
     # </editor-fold>
 
     # <editor-fold> 对每个MODIS像元：获取对应的CI值，计算fvc_60与fvc_0；计算其对应ASTER像元的组分发射率与温度，输出结果
-    # 60度
-    realVZA = generate_angles(LAI.shape, 30)
+    # 倾斜角度：中等角度28，大角度53
+    realVZA = generate_angles(LAI.shape, 28)
     # 0度
     theta_0 = 0
 
@@ -1729,10 +1729,24 @@ def main_space(band=12):
     # 记录RMSE的文件
     # file = open("pics/RMSEs_space" + str(band) + ".txt", 'w')
     # file.write("fvc\tRadiance\tRMSE\n")
-    for x in range(502, 505):
+
+    # 不同波段从不同的位置开始搜索
+    # 2327: -30, 2318: -80
+    if band == 10 or band == 11:
+        baseDelta = 110
+    # 2327: -30, 2318: -50
+    elif band == 12:
+        baseDelta = 140
+    elif band == 13:
+        baseDelta = 100
+    else:
+        baseDelta = 100
+
+    for x in range(500, 505):
         point_x = x / 10
         print("x: " + str(x))
-        for y in [-x + delta for delta in range(70, 300)]:
+        for y in [-x + delta for delta in range(baseDelta, 300)]:
+        # for y in [-x + delta for delta in range(70, 300)]:
             if y % 10 == 0:
                 print("y: " + str(y))
             point_y = y / 10
@@ -1869,9 +1883,9 @@ def writeGeo(source, target):
     # # 2318
     # geoTrans = (112.0475831299942, 0.01, 0.0, 41.02, 0.0, -0.01)
     # 2309
-    # geoTrans = (112.2025831299942, 0.01, 0.0, 41.55, 0.0, -0.01)
+    geoTrans = (112.2025831299942, 0.01, 0.0, 41.55, 0.0, -0.01)
     # 2327
-    geoTrans = (111.90104305828597, 0.01, 0.0, 40.485, 0.0, -0.01)
+    # geoTrans = (111.90104305828597, 0.01, 0.0, 40.485, 0.0, -0.01)
     # 赋值
     ds_new.SetProjection(proj)
     ds_new.SetGeoTransform(geoTrans)
@@ -2024,11 +2038,10 @@ if __name__ == '__main__':
     # display_BTsv_diff()
     # analyze_VZA()
 
-
     # 全流程
-    main_hdf()
-    up_sample()
-    add_noise()
+    # main_hdf()
+    # up_sample()
+    # add_noise()
     for i in range(10, 15):
         main_calRadiance(i)
         main_space(i)
