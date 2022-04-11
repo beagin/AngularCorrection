@@ -1232,9 +1232,9 @@ def scatter_BTs_fvc(BT, fvc, k1, c1, k2, c2, band=12, edge=True, angle=0):
     plt.legend()
     plt.xlabel("FVC")
     plt.ylabel("Radiance")
-    # plt.ylim(7.55, 11.3)
+    plt.ylim(260, 312)
     # plt.ylim(np.min(BT) - 0.5, np.max(BT) + 0.5)
-    # plt.xlim(0, 1.2)
+    plt.xlim(-0.28, 1)
     # plt.savefig("fvc_BTs_edges.png")
     plt.savefig("pics/BTs_fvc_edges_" + str(band) + "_" + str(angle) + ".png")
     # plt.show()
@@ -1883,9 +1883,10 @@ def writeGeo(source, target):
     # # 2318
     # geoTrans = (112.0475831299942, 0.01, 0.0, 41.02, 0.0, -0.01)
     # 2309
-    geoTrans = (112.2025831299942, 0.01, 0.0, 41.55, 0.0, -0.01)
+    # geoTrans = (112.2025831299942, 0.01, 0.0, 41.55, 0.0, -0.01)
     # 2327
     # geoTrans = (111.90104305828597, 0.01, 0.0, 40.485, 0.0, -0.01)
+    geoTrans = (111.90104305828597, 0.0049, 0.0, 40.485, 0.0, -0.0049)
     # 赋值
     ds_new.SetProjection(proj)
     ds_new.SetGeoTransform(geoTrans)
@@ -1912,21 +1913,8 @@ def addGeoinfo():
 
 
 def test():
-    folderPath = "..\\ASTER\\pics\\v3.11_2309\\30\\"
-    filelist = os.listdir(folderPath)
-    print(filelist)
-    for file in filelist:
-        if file.split('.')[-1] != 'txt' or file.split('.')[0] == 'results_best':
-            continue
-        else:
-            ori = open((folderPath + file), 'r')
-            new = open(folderPath + "newTxt\\" + file, 'w')
-            lines = ori.readlines()
-            for line in lines:
-                new.write(line.replace(',', '\n'))
-            ori.close()
-            new.close()
-    return
+    writeGeo("pics/v3.12_2327/55/VZA.tif", "pics/v3.12_2327/55/VZA_geo.tif")
+    writeGeo("pics/v3.12_2327/30/VZA.tif", "pics/v3.12_2327/30/VZA_geo.tif")
 
 
 def sensitivity_overall():
@@ -1961,7 +1949,101 @@ def sensitivity_overall():
         ax.set_xlabel('VZA')
         ax.set_ylabel('FVC')
         # fig.show()
-        fig.savefig('pics/sensitivity/LAI_' + str(LAI) + '.png', dpi=400)
+        fig.savefig('pics/sensitivity/LAI_' + str(LAI) + '.jpg', dpi=400)
+
+
+def sensitivity_vertex(band):
+    """
+    分析模型对顶点的敏感性
+    :return:
+    """
+    # 一景影像一种角度一个波段的数据
+    # 读取相关数据：某一波段的多角度辐亮度
+    ds_BT, BT = open_tiff("pics/BT_60_" + str(band) + ".tif")
+    ds_BT_0, BT_0 = open_tiff("pics/BT_0_" + str(band) + ".tif")
+    ds_fvc, fvc = open_tiff("pics/FVC_60_up.tif")
+    ds_fvc_0, fvc_0 = open_tiff("pics/FVC_0_up.tif")
+    ds_valid, is_valid = open_tiff("pics/is_valid_up.tif")
+
+    # 更新is_valid数据
+    is_valid[BT <= 0] = 0
+    is_valid[fvc <= 0] = 0
+    is_valid[BT_0 <= 0] = 0
+    is_valid[fvc_0 <= 0] = 0
+
+    # 获取有效值（有效值转换为一维列表）
+    # 构建特征空间只使用有效值
+    BT_valid = BT[is_valid > 0]
+    BT_0_valid = BT_0[is_valid > 0]
+    fvc_valid = fvc[is_valid > 0]
+    fvc_0_valid = fvc_0[is_valid > 0]
+    # 辐亮度转为地表温度
+    LST_0 = BTs2lst_real(BT_0, band, 0)
+    LST_0_valid = LST_0[is_valid > 0]
+
+    # 0-60图绘制
+    display_lines_0_60(BT_0_valid, BT_valid, fvc_0_valid, fvc_valid, band)
+
+    # 垂直角度的特征空间
+    k1, c1, k2, c2 = getEdges_fvc(BT_0_valid, fvc_0_valid)
+    scatter_BTs_fvc(BT_0_valid, fvc_0_valid, k1, c1, k2, c2, band, True, 0)
+
+    # 倾斜方向的特征空间
+    k1, c1, k2, c2 = getEdges_fvc(BT_valid, fvc_valid)
+    print(k1, c1, k2, c2)
+    # 出图
+    scatter_BTs_fvc(BT_valid, fvc_valid, k1, c1, k2, c2, band, True, 60)
+    # 计算特征空间中的顶点
+    point_x, point_y = cal_vertex(k1, c1, k2, c2)
+    print(point_x, point_y)
+
+    # </editor-fold>
+
+    # <editor-fold> 寻找最优顶点
+    best_x = 0
+    best_y = 0
+    best_RMSE = 5
+    preRMSE = 100
+    # 记录RMSE的文件
+    file = open("pics/RMSEs_space_" + str(band) + ".txt", 'w')
+    file.write("fvc\tRadiance\t\tRMSE\n")
+
+    for x in range(1, 21):
+        point_x = x
+        # point_x = x / 10
+        if x % 1 == 0:
+            print("x: " + str(x))
+        for y in range(-50, 50):
+            # for y in [-x + delta for delta in range(70, 300)]:
+            if y % 10 == 0:
+                print("y: " + str(y))
+            # point_y = y / 10
+            point_y = y
+            BT_0_space = np.zeros(BT_0.shape, dtype=np.float64)
+            for i in range(BT_0.shape[0]):
+                for j in range(BT_0.shape[1]):
+                    # FVC过大的点直接去除
+                    if fvc_0[i, j] > point_x or fvc[i, j] > point_x or is_valid[i, j] <= 0:
+                        continue
+                    k, c = cal_params(point_y, point_x, BT[i, j], fvc[i, j])
+                    BT_0_space[i, j] = k * fvc_0[i, j] + c
+            # 转换为地表温度，求地表温度的最小误差
+            cur_LST = BTs2lst_real(BT_0_space, band, 0)
+            RMSE_LST_space_0 = np.sqrt(metrics.mean_squared_error(cur_LST[is_valid > 0], LST_0_valid))
+            file.write("%f\t%f\t%f\n" % (point_x, point_y, RMSE_LST_space_0))
+            # 根据fvc_0与特征空间计算垂直方向辐亮度
+            if RMSE_LST_space_0 < best_RMSE:
+                best_x = point_x
+                best_y = point_y
+                best_RMSE = RMSE_LST_space_0
+            # # 如果RMSE大于上一个，则后面都是递增
+            # if RMSE_LST_space_0 > preRMSE:
+            #     preRMSE = 100
+            #     # break
+            # else:
+            #     preRMSE = RMSE_LST_space_0
+
+    print(best_x, best_y)
 
 
 def sensitivity_VZA():
@@ -2005,14 +2087,14 @@ def analyze_VZA():
     :return:
     """
     # 一定影像、一定角度的VZA、LST差值txt文件
-    folder = "..\\ASTER\\pics\\v3.11_2327\\55\\newTxt\\"
+    folder = "..\\ASTER\\pics\\v3.12_2309\\30\\"
     VZA = open(folder + "VZA_up.txt", 'r')
     VZAs = [float(line) for line in VZA.readlines()]
     minVZA = int(min(VZAs)+0.49)
     print(minVZA)
     for i in range(10, 15):
-        diff = open(folder + "diff_corr_simu_" + str(i) + ".txt", 'r')
-        # diff = open(folder + "diff_corr_diff_" + str(i) + ".txt", 'r')
+        # diff = open(folder + "diff_corr_simu_" + str(i) + ".txt", 'r')
+        diff = open(folder + "diff_corr_diff_" + str(i) + ".txt", 'r')
         diffs = [float(line) for line in diff.readlines()]
         # 记录数据
         values = [[] for j in range(minVZA, int(max(VZAs)+0.49)+1)]
@@ -2021,13 +2103,18 @@ def analyze_VZA():
             values[index].append(diffs[j])
             # 计算纠正比例
         # 计算每个区间的均值，写入文件
-        result_file = open(folder + "VZA_diff_cs_" + str(i) + ".txt", 'w')
-        result_median = open(folder + "VZA_diff_cs_median_" + str(i) + ".txt", 'w')
+        # result_file = open(folder + "newtxt\\VZA_diff_cs_" + str(i) + ".txt", 'w')
+        # result_median = open(folder + "newtxt\\VZA_diff_cs_median_" + str(i) + ".txt", 'w')
+        result_file = open(folder + "newtxt\\VZA_diff_" + str(i) + ".txt", 'w')
+        result_median = open(folder + "newtxt\\VZA_diff_median_" + str(i) + ".txt", 'w')
         for x in values:
             print(len(x))
+            if len(x) < 100:
+                continue
             result_file.write(str(np.mean(x)) + "\n")
             result_median.write(str(np.median(x)) +"\n")
         result_file.close()
+        result_median.close()
         diff.close()
     VZA.close()
 
@@ -2037,16 +2124,18 @@ if __name__ == '__main__':
     # get_mean_SE()
     # display_BTsv_diff()
     # analyze_VZA()
+    # sensitivity_overall()
+    sensitivity_vertex(14)
 
     # 全流程
     # main_hdf()
     # up_sample()
     # add_noise()
-    for i in range(10, 15):
-        main_calRadiance(i)
-        main_space(i)
-    result_diff()
-    addGeoinfo()
-    write_txt_VZA()
+    # for i in range(10, 15):
+    #     main_calRadiance(i)
+    #     main_space(i)
+    # result_diff()
+    # addGeoinfo()
+    # write_txt_VZA()
 
     # calRMSE_new("pics/BT_space_0_final_14.tif", "pics/BT_final_14.tif", "pics/VZA_up.tif", "14")

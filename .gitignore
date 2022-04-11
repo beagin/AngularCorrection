@@ -18,3 +18,5 @@ Application/data/
 Application/pics/
 *.vsdx
 *.mxd
+pics/
+temp/
