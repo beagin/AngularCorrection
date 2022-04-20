@@ -329,7 +329,7 @@ def exportGeo(index):
     # 添加坐标信息
     # Zhangye 2019 222
     if index == 1:
-        geoTrans = (106.64903767581467, 0.01, 0.0, 36.39, 0.0, -0.01)
+        geoTrans = (99.23072662353515, 0.01, 0.0, 39.31099319458008, 0.0, -0.01)
     # Hetao 2019 187
     elif index == 0:
         geoTrans = (105.74903767581467, 0.01, 0.0, 41.79, 0.0, -0.01)
@@ -393,9 +393,9 @@ def process_all(region=0):
     geotrans_LST = ds_LST.GetGeoTransform()
     geotrans_CI = ds_CI.GetGeoTransform()
     geotrans_LAI = ds_LAI.GetGeoTransform()
-    # print(geotrans_LST)
+    print(geotrans_LST)
     # print(geotrans_CI)
-    # print(geotrans_LAI)
+    print(geotrans_LAI)
     minLat = geotrans_LST[3] + geotrans_LST[5] * index_ymax
     maxLat = geotrans_LST[3] + geotrans_LST[5] * index_ymin
     minLon = geotrans_LST[0] + geotrans_LST[1] * index_xmin
@@ -476,21 +476,51 @@ def test_landsat():
 
 
 def test():
-    ori = open("pics/v1.2_Zhangye/VZA.txt", 'r')
-    new = open("pics/v1.2_Zhangye/VZA_group.txt", 'w')
-    lines = ori.readlines()
-    for line in lines:
-        item = float(line.split()[0])
-        new.write(str(int(item)) + "\n")
-    ori.close()
-    new.close()
+    # 打开所需的数据文件
+    ds_LST, LST = open_tiff(File_LST)
+    _, VZA = open_tiff(File_VZA)
+    _, emis29 = open_tiff(File_Emis29)
+    _, emis31 = open_tiff(File_Emis31)
+    _, emis32 = open_tiff(File_Emis32)
+    ds_LAI, LAI = open_tiff(File_LAI)
+    ds_CI, CI_ori = open_tiff(File_CI)
+
+    # <editor-fold> 裁剪，scale，异常值筛选
+    # MOD21数据：LST，VZA，emis
+    index_ymin = 1720
+    index_ymax = 1840
+    index_xmin = 730
+    index_xmax = 940
+
+    LST = LST[index_ymin:index_ymax, index_xmin:index_xmax] * 0.02
+    LST[LST < 250] = 0
+    print(LST.shape)
+    VZA = VZA[index_ymin:index_ymax, index_xmin:index_xmax] * 0.5
+    emis29 = emis29[index_ymin:index_ymax, index_xmin:index_xmax] * 0.002 + 0.49
+    emis31 = emis31[index_ymin:index_ymax, index_xmin:index_xmax] * 0.002 + 0.49
+    emis32 = emis32[index_ymin:index_ymax, index_xmin:index_xmax] * 0.002 + 0.49
+    emis_all = emis_fit(emis29, emis31, emis32)
+    write_tiff(LST, "LST_subset")
+    write_tiff(VZA, "VZA_subset")
+    write_tiff(emis29, "emis_29")
+    write_tiff(emis31, "emis_31")
+    write_tiff(emis32, "emis_32")
+    write_tiff(emis_all, "emis_all")
+
+    # 地理坐标范围
+    geotrans_LST = ds_LST.GetGeoTransform()
+    geotrans_CI = ds_CI.GetGeoTransform()
+    geotrans_LAI = ds_LAI.GetGeoTransform()
+    print(geotrans_LST)
+    # print(geotrans_CI)
+    print(geotrans_LAI)
 
 
 if __name__ == '__main__':
     # hdf_reproj()
-    process_all(1)
+    # process_all(1)
     # create_LUT()
     # process_space()
     # export()
-    # exportGeo(1)
+    exportGeo(1)
     # test()

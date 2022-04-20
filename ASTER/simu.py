@@ -20,17 +20,17 @@ warnings.filterwarnings("ignore")   # 忽略warning
 # ****************************************** 一些声明 **************************************
 # ASTER
 # 2327
-# file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032327_20211109202424_8804.hdf"
-# file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032327_20211109044429_8561.hdf"
-# file_SE_ASTER = "data/ASTER/AST_05_00307062019032327_20211109202540_19729.hdf"
+file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032327_20211109202424_8804.hdf"
+file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032327_20211109044429_8561.hdf"
+file_SE_ASTER = "data/ASTER/AST_05_00307062019032327_20211109202540_19729.hdf"
 # 2318
 # file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032318_20211109202424_8809.hdf"
 # file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032318_20211109044429_8560.hdf"
 # file_SE_ASTER = "data/ASTER/AST_05_00307062019032318_20211109202540_19735.hdf"
 # 2309
-file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032309_20211109202424_8812.hdf"
-file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032309_20211109044449_8628.hdf"
-file_SE_ASTER = "data/ASTER/AST_05_00307062019032309_20211109202540_19741.hdf"
+# file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032309_20211109202424_8812.hdf"
+# file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032309_20211109044449_8628.hdf"
+# file_SE_ASTER = "data/ASTER/AST_05_00307062019032309_20211109202540_19741.hdf"
 
 # MOD09
 file_MOD09_1 = "data/MODIS/MOD09GA.sur_refl_b01_1.tif"
@@ -53,9 +53,9 @@ threshold_NDVI_min = 0.3
 # 2318
 # SEs_aver = [0.9556206,0.95971876,0.9583313,0.96373886,0.9579294,0.96535045,0.9737943,0.97538644,0.96828395,0.9703193]
 # 2309
-SEs_aver = [0.95921916,0.96219736,0.96382433,0.96685,0.9655643,0.9693147,0.9739296,0.9761412,0.9667597,0.9716622]
+# SEs_aver = [0.95921916,0.96219736,0.96382433,0.96685,0.9655643,0.9693147,0.9739296,0.9761412,0.9667597,0.9716622]
 # 2327
-# SEs_aver = [0.95891243, 0.96218306, 0.9610082, 0.9646352, 0.961338, 0.96575534, 0.9749102, 0.975972, 0.9701367, 0.9715742]
+SEs_aver = [0.95891243, 0.96218306, 0.9610082, 0.9646352, 0.961338, 0.96575534, 0.9749102, 0.975972, 0.9701367, 0.9715742]
 
 
 # ****************************************** 文件操作 **************************************
@@ -981,6 +981,8 @@ def up_sample():
     _, LSTs = open_tiff("pics/LSTs_all.tif")
     _, FVC_60 = open_tiff("pics/FVC.tif")
     _, FVC_0 = open_tiff("pics/FVC_0.tif")
+    _, FVC_60_ori = open_tiff("pics/FVC_ori.tif")
+    _, FVC_0_ori = open_tiff("pics/FVC_0_ori.tif")
     _, is_valid = open_tiff("pics/is_valid.tif")
     _, VZA = open_tiff("pics/VZA.tif")
 
@@ -992,6 +994,8 @@ def up_sample():
     new_LSTs = np.zeros(new_shape, dtype=np.float64)
     new_FVC60 = np.zeros(new_shape, dtype=np.float64)
     new_FVC0 = np.zeros(new_shape, dtype=np.float64)
+    new_FVC60_ori = np.zeros(new_shape, dtype=np.float64)
+    new_FVC0_ori = np.zeros(new_shape, dtype=np.float64)
     new_valid = np.zeros(new_shape, dtype=np.float64)
     new_VZA = np.zeros(new_shape, dtype=np.float64)
     for i in range(new_shape[0]):
@@ -1003,6 +1007,8 @@ def up_sample():
                 # 其他数据取平均值
                 new_FVC60[i, j] = np.mean((FVC_60[i*2:i*2+2, j*2:j*2+2])[cur_valid > 0])
                 new_FVC0[i, j] = np.mean((FVC_0[i*2:i*2+2, j*2:j*2+2])[cur_valid > 0])
+                new_FVC60_ori[i, j] = np.mean((FVC_60_ori[i*2:i*2+2, j*2:j*2+2])[cur_valid > 0])
+                new_FVC0_ori[i, j] = np.mean((FVC_0_ori[i*2:i*2+2, j*2:j*2+2])[cur_valid > 0])
                 new_VZA[i, j] = np.mean((VZA[i*2:i*2+2, j*2:j*2+2]))
                 new_valid[i, j] = 1
                 # 组分LST需进行特殊处理
@@ -1016,6 +1022,8 @@ def up_sample():
     write_tiff(new_LSTs, "LSTs_up")
     write_tiff(new_FVC60, "FVC_60_up")
     write_tiff(new_FVC0, "FVC_0_up")
+    write_tiff(new_FVC60_ori, "FVC_60_up_ori")
+    write_tiff(new_FVC0_ori, "FVC_0_up_ori")
 
     # 对每个波段的等效发射率进行处理
     for band in range(10, 15):
@@ -1337,7 +1345,7 @@ def display_BTsv_diff():
 # 适用于hdf格式的ASTER温度文件
 
 
-def main_hdf():
+def main_hdf(var=0.0):
     """
     simulation experiment of angular normalization
     打开MODIS、ASTER、CI文件
@@ -1441,10 +1449,19 @@ def main_hdf():
     theta_0 = 0
 
     # 计算FVC，G默认为0.5，并导出图像
+    # 添加LAI误差
+    if var != 0:
+        noise = np.random.normal(0, var, LAI.shape)
+        LAI_noise = noise + LAI
+        FVC_60_noise = cal_fvc_gap(LAI_noise, CI, realVZA)
+        FVC_0_noise = cal_fvc_gap(LAI_noise, CI, theta_0)
+        write_tiff(LAI_noise, "LAI_noise")
+        write_tiff(FVC_60_noise, "FVC")
+        write_tiff(FVC_0_noise, "FVC_0")
     FVC_60 = cal_fvc_gap(LAI, CI, realVZA)
     FVC_0 = cal_fvc_gap(LAI, CI, theta_0)
-    write_tiff(FVC_60, "FVC")
-    write_tiff(FVC_0, "FVC_0")
+    write_tiff(FVC_60, "FVC_ori")
+    write_tiff(FVC_0, "FVC_0_ori")
     print("done FVC calculation")
 
     # 进行ASTER的像元分类，计算组分温度与发射率
@@ -1598,7 +1615,7 @@ def main_hdf():
     # </editor-fold>
 
 
-def add_noise():
+def add_noise(var=1):
     """
     给计算出的组分温度添加噪声
     :return:
@@ -1606,9 +1623,9 @@ def add_noise():
     _, LSTv = open_tiff("pics/LSTv_up.tif")
     _, LSTs = open_tiff("pics/LSTs_up.tif")
     # 添加噪声
-    noise = np.random.normal(0, 1, LSTs.shape)
+    noise = np.random.normal(0, var, LSTs.shape)
     LSTv_new = LSTv + noise
-    noise = np.random.normal(0, 1, LSTs.shape)
+    noise = np.random.normal(0, var, LSTs.shape)
     LSTs_new = LSTs + noise
     # 有效区域外重新赋值
     LSTv_new[LSTv==0] = 0
@@ -1616,6 +1633,26 @@ def add_noise():
     # 输出结果
     write_tiff(LSTs_new, "LSTs_up_noise")
     write_tiff(LSTv_new, "LSTv_up_noise")
+
+
+def add_noise_FVC(var):
+    """
+    给计算出的组分温度添加噪声
+    :return:
+    """
+    _, FVC = open_tiff("pics/FVC_0_up.tif")
+    _, FVC_60 = open_tiff("pics/FVC_60_up.tif")
+    # 添加噪声
+    noise = np.random.normal(0, var, FVC.shape)
+    FVC_new = FVC + noise
+    noise = np.random.normal(0, var, FVC_60.shape)
+    FVC_60_new = FVC_60 + noise
+    # 有效区域外重新赋值
+    FVC_new[FVC==0] = 0
+    FVC_60_new[FVC_60==0] = 0
+    # 输出结果
+    write_tiff(FVC_new, "FVC_0_noise")
+    write_tiff(FVC_60_new, "FVC_60_noise")
 
 
 def main_calRadiance(band=12):
@@ -1629,8 +1666,8 @@ def main_calRadiance(band=12):
     _, LSTs = open_tiff("pics/LSTs_up_noise.tif")
     _, SEs = open_tiff("pics/SEs_up_" + str(band) + ".tif")
     _, SEv = open_tiff("pics/SEv_up_" + str(band) + ".tif")
-    _, FVC_60 = open_tiff("pics/FVC_60_up.tif")
-    _, FVC_0 = open_tiff("pics/FVC_0_up.tif")
+    _, FVC_60 = open_tiff("pics/FVC_60_up_ori.tif")
+    _, FVC_0 = open_tiff("pics/FVC_0_up_ori.tif")
     _, is_valid = open_tiff("pics/is_valid_up.tif")
 
     # 存储计算出来的两个角度辐亮度的数组
@@ -1732,15 +1769,17 @@ def main_space(band=12):
 
     # 不同波段从不同的位置开始搜索
     # 2327: -30, 2318: -80
-    if band == 10 or band == 11:
-        baseDelta = 110
+    if band == 10 or band == 11 or band == 12:
+        # baseDelta = 110
+        baseDelta = -80
     # 2327: -30, 2318: -50
-    elif band == 12:
-        baseDelta = 140
-    elif band == 13:
-        baseDelta = 100
+    # elif band == 12:
+    #     baseDelta = 140
+    # elif band == 13:
+    #     baseDelta = 100
     else:
-        baseDelta = 100
+        # baseDelta = 100
+        baseDelta = 30
 
     for x in range(500, 505):
         point_x = x / 10
@@ -2125,15 +2164,16 @@ if __name__ == '__main__':
     # display_BTsv_diff()
     # analyze_VZA()
     # sensitivity_overall()
-    sensitivity_vertex(14)
+    # sensitivity_vertex(14)
 
     # 全流程
-    # main_hdf()
-    # up_sample()
-    # add_noise()
-    # for i in range(10, 15):
-    #     main_calRadiance(i)
-    #     main_space(i)
+    main_hdf(1)
+    up_sample()
+    add_noise()
+    # add_noise_FVC(0.1)
+    for i in range(10, 15):
+        main_calRadiance(i)
+        main_space(i)
     # result_diff()
     # addGeoinfo()
     # write_txt_VZA()
