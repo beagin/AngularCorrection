@@ -11,7 +11,7 @@ from sklearn import metrics
 from PIL import Image
 from osgeo import gdal, gdalconst
 import math
-from code_2020.kernals import Ross_thick, LI_SparseR
+# from code_2020.kernals import Ross_thick, LI_SparseR
 import random
 import warnings
 warnings.filterwarnings("ignore")   # 忽略warning
@@ -277,57 +277,57 @@ def cal_fvc_gap(LAI, omega, theta, G=0.5):
     return 1-np.exp(-LAI * omega * G / np.cos(theta*math.pi/180))
 
 
-def cal_ref_BRDF(SZA, VZA, iso, vol, geo):
-    """
-    根据BRDF模型计算一个波段的反射率
-    :param SZA:
-    :param SAA:
-    :param VZA:
-    :param VAA:
-    :param brdf_1:
-    :param brdf_2:
-    :param brdf_3:
-    :return:
-    """
-    shape = SZA.shape
-    result = [[] for i in range(shape[0])]
-    result_vol = [[] for i in range(shape[0])]
-    result_geo = [[] for i in range(shape[0])]
-    for i in range(shape[0]):
-        for j in range(shape[1]):
-            # rAzimuth = (SAA[i, j] - VAA[i, j]) % 180
-            rAzimuth = 0
-            sza = 60 / 180 * math.pi
-            # Kvol = Ross_thick(sza, VZA[i, j], rAzimuth)
-            Kvol = Ross_thick(SZA[i, j] * math.pi / 180, VZA[i, j], rAzimuth)
-            Kgeo = LI_SparseR(SZA[i, j] * math.pi / 180, VZA[i, j], rAzimuth)
-            # Kgeo = LI_SparseR(sza, VZA[i, j], rAzimuth)
-            result_vol[i].append(Kvol)
-            result_geo[i].append(Kgeo)
-            ref = iso[i, j] + vol[i, j] * Kvol + geo[i, j] * Kgeo
-            result[i].append(ref)
-
-    result_vol = np.array(result_vol)
-    result_geo = np.array(result_geo)
-    result = np.array(result)
-    # 特殊值处理
-    result_vol[np.abs(result_vol) > 1000] = 0
-    result_geo[np.abs(result_geo) > 1000] = 0
-    iso[np.abs(iso) > 1000] = 0
-    result[np.abs(result) > 1000] = 0
-
-    # print(np.min(result_vol))
-    # print(np.min(result_geo))
-    # print(np.min(iso))
-    # print(np.max(result_vol))
-    # print(np.max(result_geo))
-    # print(np.max(iso))
-    # display(result_vol, "VOL_4")
-    # display(result_geo, "GEO_4")
-    # display(np.array(iso), "ISO_2")
-
-    # display(result, "BRDF_band1_2")
-    return np.array(result)
+# def cal_ref_BRDF(SZA, VZA, iso, vol, geo):
+#     """
+#     根据BRDF模型计算一个波段的反射率
+#     :param SZA:
+#     :param SAA:
+#     :param VZA:
+#     :param VAA:
+#     :param brdf_1:
+#     :param brdf_2:
+#     :param brdf_3:
+#     :return:
+#     """
+#     shape = SZA.shape
+#     result = [[] for i in range(shape[0])]
+#     result_vol = [[] for i in range(shape[0])]
+#     result_geo = [[] for i in range(shape[0])]
+#     for i in range(shape[0]):
+#         for j in range(shape[1]):
+#             # rAzimuth = (SAA[i, j] - VAA[i, j]) % 180
+#             rAzimuth = 0
+#             sza = 60 / 180 * math.pi
+#             # Kvol = Ross_thick(sza, VZA[i, j], rAzimuth)
+#             Kvol = Ross_thick(SZA[i, j] * math.pi / 180, VZA[i, j], rAzimuth)
+#             Kgeo = LI_SparseR(SZA[i, j] * math.pi / 180, VZA[i, j], rAzimuth)
+#             # Kgeo = LI_SparseR(sza, VZA[i, j], rAzimuth)
+#             result_vol[i].append(Kvol)
+#             result_geo[i].append(Kgeo)
+#             ref = iso[i, j] + vol[i, j] * Kvol + geo[i, j] * Kgeo
+#             result[i].append(ref)
+#
+#     result_vol = np.array(result_vol)
+#     result_geo = np.array(result_geo)
+#     result = np.array(result)
+#     # 特殊值处理
+#     result_vol[np.abs(result_vol) > 1000] = 0
+#     result_geo[np.abs(result_geo) > 1000] = 0
+#     iso[np.abs(iso) > 1000] = 0
+#     result[np.abs(result) > 1000] = 0
+#
+#     # print(np.min(result_vol))
+#     # print(np.min(result_geo))
+#     # print(np.min(iso))
+#     # print(np.max(result_vol))
+#     # print(np.max(result_geo))
+#     # print(np.max(iso))
+#     # display(result_vol, "VOL_4")
+#     # display(result_geo, "GEO_4")
+#     # display(np.array(iso), "ISO_2")
+#
+#     # display(result, "BRDF_band1_2")
+#     return np.array(result)
 
 
 def cal_index(base, interval, target):
@@ -971,20 +971,20 @@ def get_mean_SE():
         print(np.mean(SEs), np.mean(SEv))
 
 
-def up_sample():
+def up_sample(folder=""):
     """
     对各种数据进行上采样，由0.005到0.01degree分辨率
     :return:
     """
     # 打开数据
-    _, LSTv = open_tiff("pics/LSTv_all.tif")
-    _, LSTs = open_tiff("pics/LSTs_all.tif")
-    _, FVC_60 = open_tiff("pics/FVC.tif")
-    _, FVC_0 = open_tiff("pics/FVC_0.tif")
-    _, FVC_60_ori = open_tiff("pics/FVC_ori.tif")
-    _, FVC_0_ori = open_tiff("pics/FVC_0_ori.tif")
-    _, is_valid = open_tiff("pics/is_valid.tif")
-    _, VZA = open_tiff("pics/VZA.tif")
+    _, LSTv = open_tiff("pics/" + folder + "LSTv_all.tif")
+    _, LSTs = open_tiff("pics/" + folder + "LSTs_all.tif")
+    _, FVC_60 = open_tiff("pics/" + folder + "FVC.tif")
+    _, FVC_0 = open_tiff("pics/" + folder + "FVC_0.tif")
+    _, FVC_60_ori = open_tiff("pics/" + folder + "FVC_ori.tif")
+    _, FVC_0_ori = open_tiff("pics/" + folder + "FVC_0_ori.tif")
+    _, is_valid = open_tiff("pics/" + folder + "is_valid.tif")
+    _, VZA = open_tiff("pics/" + folder + "VZA.tif")
 
     # 上采样操作
     shape = LSTs.shape
@@ -1018,12 +1018,12 @@ def up_sample():
                 pass
 
     # 存储上采样后的数据
-    write_tiff(new_LSTv, "LSTv_up")
-    write_tiff(new_LSTs, "LSTs_up")
-    write_tiff(new_FVC60, "FVC_60_up")
-    write_tiff(new_FVC0, "FVC_0_up")
-    write_tiff(new_FVC60_ori, "FVC_60_up_ori")
-    write_tiff(new_FVC0_ori, "FVC_0_up_ori")
+    write_tiff(new_LSTv, folder + "LSTv_up")
+    write_tiff(new_LSTs, folder + "LSTs_up")
+    write_tiff(new_FVC60, folder + "FVC_60_up")
+    write_tiff(new_FVC0, folder + "FVC_0_up")
+    write_tiff(new_FVC60_ori, folder + "FVC_60_up_ori")
+    write_tiff(new_FVC0_ori, folder + "FVC_0_up_ori")
 
     # 对每个波段的等效发射率进行处理
     for band in range(10, 15):
@@ -1042,10 +1042,10 @@ def up_sample():
                     if new_SEs[i, j] < 0.5:
                         print(cur_valid)
                         print((SEs[i*2:i*2+2, j*2:j*2+2])[cur_valid > 0])
-        write_tiff(new_SEs, "SEs_up_" + str(band))
-        write_tiff(new_SEv, "SEv_up_" + str(band))
-    write_tiff(new_valid, "is_valid_up")
-    write_tiff(new_VZA, "VZA_up")
+        write_tiff(new_SEs, folder + "SEs_up_" + str(band))
+        write_tiff(new_SEv, folder + "SEv_up_" + str(band))
+    write_tiff(new_valid, folder + "is_valid_up")
+    write_tiff(new_VZA, folder + "VZA_up")
 
 # </editor-fold>    计算
 
@@ -1152,7 +1152,7 @@ def get_aster_lat_lon(sds):
     return np.asarray(lat), np.asarray(lon)
 
 
-def generate_angles(shape:tuple, minVZA=55):
+def generate_angles(shape:tuple, minVZA=55, folder=""):
     """
     给定一个数据的shape，生成同样大小的角度（VZA）数据
     :param shape:
@@ -1164,7 +1164,7 @@ def generate_angles(shape:tuple, minVZA=55):
         for j in range(shape[1]):
             # 每个点，根据横纵坐标计算，i为纵坐标
             VZA[i, j] = minVZA + i * 0.013 + j * 0.033
-    write_tiff(VZA, "VZA")
+    write_tiff(VZA, folder + "VZA")
     return VZA
 
 
@@ -1345,7 +1345,7 @@ def display_BTsv_diff():
 # 适用于hdf格式的ASTER温度文件
 
 
-def main_hdf(var=0.0):
+def main_hdf(var=0.0, folder=""):
     """
     simulation experiment of angular normalization
     打开MODIS、ASTER、CI文件
@@ -1436,15 +1436,15 @@ def main_hdf(var=0.0):
     # 对CI、LAI数据进行裁剪、输出文件
     CI = CI[min_y - 1:max_y + 1, min_x - 1:max_x + 1] * 0.001
     LAI = LAI[min_y_2 - 1:max_y_2 + 1, min_x_2 - 1:max_x_2 + 1] * 0.1
-    write_tiff(CI, "CI")
-    write_tiff(LAI, "LAI")
+    write_tiff(CI, folder + "CI")
+    write_tiff(LAI, folder + "LAI")
 
     # LAI与CI数据应当是可以完全对应的
     # </editor-fold>
 
     # <editor-fold> 对每个MODIS像元：获取对应的CI值，计算fvc_60与fvc_0；计算其对应ASTER像元的组分发射率与温度，输出结果
     # 倾斜角度：中等角度28，大角度53
-    realVZA = generate_angles(LAI.shape, 28)
+    realVZA = generate_angles(LAI.shape, 28, folder)
     # 0度
     theta_0 = 0
 
@@ -1455,13 +1455,13 @@ def main_hdf(var=0.0):
         LAI_noise = noise + LAI
         FVC_60_noise = cal_fvc_gap(LAI_noise, CI, realVZA)
         FVC_0_noise = cal_fvc_gap(LAI_noise, CI, theta_0)
-        write_tiff(LAI_noise, "LAI_noise")
-        write_tiff(FVC_60_noise, "FVC")
-        write_tiff(FVC_0_noise, "FVC_0")
+        write_tiff(LAI_noise, folder + "LAI_noise")
+        write_tiff(FVC_60_noise, folder + "FVC")
+        write_tiff(FVC_0_noise, folder + "FVC_0")
     FVC_60 = cal_fvc_gap(LAI, CI, realVZA)
     FVC_0 = cal_fvc_gap(LAI, CI, theta_0)
-    write_tiff(FVC_60, "FVC_ori")
-    write_tiff(FVC_0, "FVC_0_ori")
+    write_tiff(FVC_60, folder + "FVC_ori")
+    write_tiff(FVC_0, folder + "FVC_0_ori")
     print("done FVC calculation")
 
     # 进行ASTER的像元分类，计算组分温度与发射率
@@ -1598,30 +1598,30 @@ def main_hdf(var=0.0):
 
     # <editor-fold> 中间结果输出
     # 出图
-    write_tiff(LSTv_all, "LSTv_all")
-    write_tiff(LSTs_all, "LSTs_all")
-    write_tiff(SEs_aver_10, "SEs_aver_10")
-    write_tiff(SEs_aver_11, "SEs_aver_11")
-    write_tiff(SEs_aver_12, "SEs_aver_12")
-    write_tiff(SEs_aver_13, "SEs_aver_13")
-    write_tiff(SEs_aver_14, "SEs_aver_14")
-    write_tiff(SEv_aver_10, "SEv_aver_10")
-    write_tiff(SEv_aver_11, "SEv_aver_11")
-    write_tiff(SEv_aver_12, "SEv_aver_12")
-    write_tiff(SEv_aver_13, "SEv_aver_13")
-    write_tiff(SEv_aver_14, "SEv_aver_14")
-    write_tiff(is_valid, "is_valid")
+    write_tiff(LSTv_all, folder + "LSTv_all")
+    write_tiff(LSTs_all, folder + "LSTs_all")
+    write_tiff(SEs_aver_10, folder + "SEs_aver_10")
+    write_tiff(SEs_aver_11, folder + "SEs_aver_11")
+    write_tiff(SEs_aver_12, folder + "SEs_aver_12")
+    write_tiff(SEs_aver_13, folder + "SEs_aver_13")
+    write_tiff(SEs_aver_14, folder + "SEs_aver_14")
+    write_tiff(SEv_aver_10, folder + "SEv_aver_10")
+    write_tiff(SEv_aver_11, folder + "SEv_aver_11")
+    write_tiff(SEv_aver_12, folder + "SEv_aver_12")
+    write_tiff(SEv_aver_13, folder + "SEv_aver_13")
+    write_tiff(SEv_aver_14, folder + "SEv_aver_14")
+    write_tiff(is_valid, folder + "is_valid")
 
     # </editor-fold>
 
 
-def add_noise(var=1):
+def add_noise(var=1, folder=""):
     """
     给计算出的组分温度添加噪声
     :return:
     """
-    _, LSTv = open_tiff("pics/LSTv_up.tif")
-    _, LSTs = open_tiff("pics/LSTs_up.tif")
+    _, LSTv = open_tiff("pics/" + folder + "LSTv_up.tif")
+    _, LSTs = open_tiff("pics/" + folder + "LSTs_up.tif")
     # 添加噪声
     noise = np.random.normal(0, var, LSTs.shape)
     LSTv_new = LSTv + noise
@@ -1631,8 +1631,8 @@ def add_noise(var=1):
     LSTv_new[LSTv==0] = 0
     LSTs_new[LSTs==0] = 0
     # 输出结果
-    write_tiff(LSTs_new, "LSTs_up_noise")
-    write_tiff(LSTv_new, "LSTv_up_noise")
+    write_tiff(LSTs_new, folder + "LSTs_up_noise")
+    write_tiff(LSTv_new, folder + "LSTv_up_noise")
 
 
 def add_noise_FVC(var):
@@ -1655,20 +1655,20 @@ def add_noise_FVC(var):
     write_tiff(FVC_60_new, "FVC_60_noise")
 
 
-def main_calRadiance(band=12):
+def main_calRadiance(band=12, folder=""):
     """
     从平均组分温度、组分发射率、植被覆盖度来计算辐亮度及等效发射率
     :return:
     """
     print("radiance calculation for band " + str(band))
     # 打开所需数据文件
-    _, LSTv = open_tiff("pics/LSTv_up_noise.tif")
-    _, LSTs = open_tiff("pics/LSTs_up_noise.tif")
-    _, SEs = open_tiff("pics/SEs_up_" + str(band) + ".tif")
-    _, SEv = open_tiff("pics/SEv_up_" + str(band) + ".tif")
-    _, FVC_60 = open_tiff("pics/FVC_60_up_ori.tif")
-    _, FVC_0 = open_tiff("pics/FVC_0_up_ori.tif")
-    _, is_valid = open_tiff("pics/is_valid_up.tif")
+    _, LSTv = open_tiff("pics/" + folder + "LSTv_up_noise.tif")
+    _, LSTs = open_tiff("pics/" + folder + "LSTs_up_noise.tif")
+    _, SEs = open_tiff("pics/" + folder + "SEs_up_" + str(band) + ".tif")
+    _, SEv = open_tiff("pics/" + folder + "SEv_up_" + str(band) + ".tif")
+    _, FVC_60 = open_tiff("pics/" + folder + "FVC_60_up_ori.tif")
+    _, FVC_0 = open_tiff("pics/" + folder + "FVC_0_up_ori.tif")
+    _, is_valid = open_tiff("pics/" + folder + "is_valid_up.tif")
 
     # 存储计算出来的两个角度辐亮度的数组
     BT_0 = np.zeros(LSTs.shape, dtype=np.float64)
@@ -1697,13 +1697,13 @@ def main_calRadiance(band=12):
 
             # 其他情况都不考虑
 
-    write_tiff(BT_0, "BT_0_" + str(band))
-    write_tiff(BT_60, "BT_60_" + str(band))
-    write_tiff(SE, "SE_60_" + str(band))
-    write_tiff(SE_0, "SE_0_" + str(band))
+    write_tiff(BT_0, folder + "BT_0_" + str(band))
+    write_tiff(BT_60, folder + "BT_60_" + str(band))
+    write_tiff(SE, folder + "SE_60_" + str(band))
+    write_tiff(SE_0, folder + "SE_0_" + str(band))
 
 
-def main_space(band=12):
+def main_space(band=12, folder=""):
     """
     得到模拟结果后，进行特征空间相关处理
     :return:
@@ -1712,11 +1712,11 @@ def main_space(band=12):
 
     print("space construction for band " + str(band))
     # 读取相关数据：某一波段的多角度辐亮度
-    ds_BT, BT = open_tiff("pics/BT_60_" + str(band) + ".tif")
-    ds_BT_0, BT_0 = open_tiff("pics/BT_0_" + str(band) + ".tif")
-    ds_fvc, fvc = open_tiff("pics/FVC_60_up.tif")
-    ds_fvc_0, fvc_0 = open_tiff("pics/FVC_0_up.tif")
-    ds_valid, is_valid = open_tiff("pics/is_valid_up.tif")
+    ds_BT, BT = open_tiff("pics/" + folder + "BT_60_" + str(band) + ".tif")
+    ds_BT_0, BT_0 = open_tiff("pics/" + folder + "BT_0_" + str(band) + ".tif")
+    ds_fvc, fvc = open_tiff("pics/" + folder + "FVC_60_up.tif")
+    ds_fvc_0, fvc_0 = open_tiff("pics/" + folder + "FVC_0_up.tif")
+    ds_valid, is_valid = open_tiff("pics/" + folder + "is_valid_up.tif")
 
     # 更新is_valid数据
     is_valid[BT <= 0] = 0
@@ -1771,7 +1771,7 @@ def main_space(band=12):
     # 2327: -30, 2318: -80
     if band == 10 or band == 11 or band == 12:
         # baseDelta = 110
-        baseDelta = -80
+        baseDelta = -170
     # 2327: -30, 2318: -50
     # elif band == 12:
     #     baseDelta = 140
@@ -1779,7 +1779,7 @@ def main_space(band=12):
     #     baseDelta = 100
     else:
         # baseDelta = 100
-        baseDelta = 30
+        baseDelta = -100
 
     for x in range(500, 505):
         point_x = x / 10
@@ -1816,7 +1816,7 @@ def main_space(band=12):
 
     # file.close()
     # 输出结果至txt文件
-    resultFile = open("pics/results_best.txt", "a")
+    resultFile = open("pics/" + folder + "results_best.txt", "a")
     resultFile.write("B" + str(band) + "\n")
     resultFile.write("best x: " + str(best_x) + "\n")
     resultFile.write("best y: " + str(best_y) + "\n")
@@ -1874,10 +1874,10 @@ def main_space(band=12):
     # </editor-fold>
 
     # 出图
-    write_tiff(BT_0_space, "Radiance_0_space_" + str(band))
-    write_tiff(LST, "LST_final_" + str(band))
-    write_tiff(LST_0, "LST_0_final_" + str(band))
-    write_tiff(LST_space_0, "LST_space_0_final_" + str(band))
+    write_tiff(BT_0_space, folder + "Radiance_0_space_" + str(band))
+    write_tiff(LST, folder + "LST_final_" + str(band))
+    write_tiff(LST_0, folder + "LST_0_final_" + str(band))
+    write_tiff(LST_space_0, folder + "LST_space_0_final_" + str(band))
     # write_tiff(is_valid, "valid_final")
     resultFile.close()
 
@@ -2158,6 +2158,15 @@ def analyze_VZA():
     VZA.close()
 
 
+def main(var=0.0, folder=""):
+    main_hdf(var, folder)
+    up_sample(folder)
+    add_noise(folder)
+    for i in range(10, 15):
+        main_calRadiance(i, folder)
+        main_space(i, folder)
+
+
 if __name__ == '__main__':
     # test()
     # get_mean_SE()
@@ -2167,15 +2176,19 @@ if __name__ == '__main__':
     # sensitivity_vertex(14)
 
     # 全流程
-    main_hdf(1)
-    up_sample()
-    add_noise()
+    # main_hdf(0.5, "v3.12_2327/30_LAI05/")
+    # up_sample()
+    # add_noise(folder="v3.12_2327/30_LAI05/")
     # add_noise_FVC(0.1)
-    for i in range(10, 15):
-        main_calRadiance(i)
-        main_space(i)
+    # for i in range(10, 15):
+    #     main_calRadiance(i)
+    #     main_space(i)
     # result_diff()
     # addGeoinfo()
     # write_txt_VZA()
 
     # calRMSE_new("pics/BT_space_0_final_14.tif", "pics/BT_final_14.tif", "pics/VZA_up.tif", "14")
+
+    # main(0.5, "v3.12_2327/30_LAI05/")
+    # main(1.5, "v3.12_2327/30_LAI15/")
+    main(0.2, "v3.12_2327/30_LAI02/")
