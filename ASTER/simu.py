@@ -1027,8 +1027,8 @@ def up_sample(folder=""):
 
     # 对每个波段的等效发射率进行处理
     for band in range(10, 15):
-        _, SEs = open_tiff("pics/SEs_aver_" + str(band) + ".tif")
-        _, SEv = open_tiff("pics/SEv_aver_" + str(band) + ".tif")
+        _, SEs = open_tiff("pics/" + folder + "SEs_aver_" + str(band) + ".tif")
+        _, SEv = open_tiff("pics/" + folder + "SEv_aver_" + str(band) + ".tif")
         new_SEs = np.zeros(new_shape, dtype=np.float64)
         new_SEv = np.zeros(new_shape, dtype=np.float64)
         for i in range(new_shape[0]):
@@ -1074,7 +1074,7 @@ def lst2BTs(lst, band=12):
     return BTs
 
 
-def BTs2lst_real(BTs, band=12, angle=0):
+def BTs2lst_real(BTs, band=12, angle=0, folder=""):
     """
     辐亮度转换为地表温度，需考虑发射率
     :param BTs:
@@ -1082,9 +1082,9 @@ def BTs2lst_real(BTs, band=12, angle=0):
     """
     fileName = "SRF/LUT" + str(band) + ".txt"
     if angle == 0:
-        _, SE =open_tiff("pics/SE_0_" + str(band) + ".tif")
+        _, SE =open_tiff("pics/" + folder + "SE_0_" + str(band) + ".tif")
     else:
-        _, SE =open_tiff("pics/SE_60_" + str(band) + ".tif")
+        _, SE =open_tiff("pics/" + folder + "SE_60_" + str(band) + ".tif")
     LUT = get_LUT(fileName)
     if type(BTs) == np.ndarray:
         # 辐亮度除以发射率，再进行到地表温度的转换
@@ -1240,7 +1240,7 @@ def scatter_BTs_fvc(BT, fvc, k1, c1, k2, c2, band=12, edge=True, angle=0):
     plt.legend()
     plt.xlabel("FVC")
     plt.ylabel("Radiance")
-    plt.ylim(260, 312)
+    # plt.ylim(260, 312)
     # plt.ylim(np.min(BT) - 0.5, np.max(BT) + 0.5)
     plt.xlim(-0.28, 1)
     # plt.savefig("fvc_BTs_edges.png")
@@ -1731,8 +1731,8 @@ def main_space(band=12, folder=""):
     fvc_valid = fvc[is_valid > 0]
     fvc_0_valid = fvc_0[is_valid > 0]
     # 辐亮度转为地表温度
-    LST = BTs2lst_real(BT, band, 60)
-    LST_0 = BTs2lst_real(BT_0, band, 0)
+    LST = BTs2lst_real(BT, band, 60, folder)
+    LST_0 = BTs2lst_real(BT_0, band, 0, folder)
     LST_valid = LST[is_valid > 0]
     LST_0_valid = LST_0[is_valid > 0]
 
@@ -1798,7 +1798,7 @@ def main_space(band=12, folder=""):
                     k, c = cal_params(point_y, point_x, BT[i, j], fvc[i, j])
                     BT_0_space[i, j] = k * fvc_0[i, j] + c
             # 转换为地表温度，求地表温度的最小误差
-            cur_LST = BTs2lst_real(BT_0_space, band, 0)
+            cur_LST = BTs2lst_real(BT_0_space, band, 0, folder)
             RMSE_LST_space_0 = np.sqrt(metrics.mean_squared_error(cur_LST[is_valid > 0], LST_0_valid))
             # RMSE_BT_space_0 = np.sqrt(metrics.mean_squared_error(BT_0, BT_0_space))
             # file.write("%f\t%f\t%f\n" % (point_x, point_y, RMSE_BT_space_0))
@@ -1859,7 +1859,7 @@ def main_space(band=12, folder=""):
     resultFile.write("RMSE_Radiance_space:\t" + str(RMSE_BT_space) + "\n")
 
     # 温度对比
-    LST_space_0 = BTs2lst_real(BT_0_space, band, 0)
+    LST_space_0 = BTs2lst_real(BT_0_space, band, 0, folder)
     LST_space_0_valid = LST_space_0[is_valid > 0]
 
     display_hist(LST_space_0_valid - LST_0_valid, "BT_diff_space_0_" + str(band))
@@ -2159,9 +2159,9 @@ def analyze_VZA():
 
 
 def main(var=0.0, folder=""):
-    main_hdf(var, folder)
-    up_sample(folder)
-    add_noise(folder)
+    # main_hdf(var, folder)
+    # up_sample(folder)
+    # add_noise(folder=folder)
     for i in range(10, 15):
         main_calRadiance(i, folder)
         main_space(i, folder)
@@ -2189,6 +2189,6 @@ if __name__ == '__main__':
 
     # calRMSE_new("pics/BT_space_0_final_14.tif", "pics/BT_final_14.tif", "pics/VZA_up.tif", "14")
 
-    # main(0.5, "v3.12_2327/30_LAI05/")
+    main(0.5, "v3.12_2327/30_LAI05/")
     # main(1.5, "v3.12_2327/30_LAI15/")
-    main(0.2, "v3.12_2327/30_LAI02/")
+    # main(0.2, "v3.12_2327/30_LAI02/")

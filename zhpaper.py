@@ -3,17 +3,18 @@ get TVDI for Huabei plain
 
 """
 from ASTER.simu import *
+import os
 
 # 文件路径
-file_NDVI = "temp/MOD13_mask.tif"
-file_LST1 = "temp/MERSI_SW_LST.tif"
-file_LST2 = "temp/190921add1.tif"
+# file_NDVI = "temp/MOD13_mask.tif"
+# file_LST1 = "temp/MERSI_SW_LST.tif"
+# file_LST2 = "temp/190921add1.tif"
 
 
-def main():
+def main(file_NDVI, file_LST, doy):
     # 读取文件
     _, ndvi = open_tiff(file_NDVI)
-    _, LST = open_tiff(file_LST1)
+    _, LST = open_tiff(file_LST)
     print(ndvi.shape)
     print(LST.shape)    # 差1，进行裁剪
 
@@ -22,7 +23,22 @@ def main():
     # ndvi = ndvi[:-1, :-1] * 0.0001
     # 925
     # ndvi = ndvi[:, :-1] * 0.0001
-    ndvi = ndvi[:-1, :] * 0.0001
+    if ndvi.shape != LST.shape:
+        # shape[0]不同
+        if ndvi.shape[0] != LST.shape[0]:
+            # ndvi范围更小
+            if ndvi.shape[0] < LST.shape[0]:
+                LST = LST[:ndvi.shape[0]-LST.shape[0], :]
+            else:
+                ndvi = ndvi[:LST.shape[0]-ndvi.shape[0], :]
+        if ndvi.shape[1] != LST.shape[1]:
+            # ndvi范围更小
+            if ndvi.shape[1] < LST.shape[1]:
+                LST = LST[:, :ndvi.shape[1] - LST.shape[1]]
+            else:
+                ndvi = ndvi[:, :LST.shape[1] - ndvi.shape[1]]
+
+    ndvi = ndvi * 0.0001
     ndvi[np.isnan(ndvi)] = 0
     LST[np.isnan(LST)] = 0
     LST[LST < 260] = 0
@@ -31,7 +47,7 @@ def main():
     k1, c1, k2, c2 = getEdges(LST, ndvi)
     k2 = 0
     c2 = 270
-    scatter_BTs_fvc(LST, ndvi, k1, c1, k2, c2)
+    scatter_BTs_fvc(LST, ndvi, k1, c1, k2, c2, band=doy)
 
     # 对每个点，计算TVDI值
     shape = ndvi.shape
@@ -53,8 +69,8 @@ def main():
                 continue
     TVDI[LST < 260] = np.nan
     print(TVDI.shape)
-    write_tiff(TVDI, "TVDI")
-    export("pics/TVDI.tif", file_LST1)
+    write_tiff(TVDI, "TVDI_" + str(doy))
+    export("pics/TVDI_" + str(doy) + ".tif", file_LST)
 
     # 导出有效点txt
     # ndvi = ndvi[LST>=260]
@@ -87,4 +103,11 @@ def export(source, target):
 
 
 if __name__ == '__main__':
-    main()
+    lstfiles = os.listdir("temp/LST/")
+    ndvifiles = os.listdir("temp/NDVI/")
+    for index in range(len(lstfiles)):
+        doy = ndvifiles[index].split(".")[0][-3:]
+        print(doy)
+        print(ndvifiles[index])
+        print(lstfiles[index])
+        main("temp/NDVI/" + ndvifiles[index], "temp/LST/" + lstfiles[index], doy)
