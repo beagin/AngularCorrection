@@ -158,17 +158,17 @@ def write_txt_VZA():
     return
 
 
-def result_diff():
+def result_diff(folder=""):
     """
     结果分析部分，差值等txt导出
     :return:
     """
     # 组分温度
-    _, LSTv = open_tiff("pics/LSTv_up_noise.tif")
-    _, LSTs = open_tiff("pics/LSTs_up_noise.tif")
+    _, LSTv = open_tiff("pics/" + folder + "LSTv_up_noise.tif")
+    _, LSTs = open_tiff("pics/" + folder + "LSTs_up_noise.tif")
     # 覆盖度
-    _, FVC0 = open_tiff("pics/FVC_0_up.tif")
-    _, FVC60 = open_tiff("pics/FVC_60_up.tif")
+    _, FVC0 = open_tiff("pics/" + folder + "FVC_0_up_ori.tif")
+    _, FVC60 = open_tiff("pics/" + folder + "FVC_60_up_ori.tif")
     # 像元有效性
     _, valid = open_tiff("pics/is_valid_up.tif")
     diff_clst = LSTs - LSTv     # 组分温度差值
@@ -979,12 +979,12 @@ def up_sample(folder=""):
     # 打开数据
     _, LSTv = open_tiff("pics/" + folder + "LSTv_all.tif")
     _, LSTs = open_tiff("pics/" + folder + "LSTs_all.tif")
-    _, FVC_60 = open_tiff("pics/" + folder + "FVC.tif")
-    _, FVC_0 = open_tiff("pics/" + folder + "FVC_0.tif")
     _, FVC_60_ori = open_tiff("pics/" + folder + "FVC_ori.tif")
     _, FVC_0_ori = open_tiff("pics/" + folder + "FVC_0_ori.tif")
     _, is_valid = open_tiff("pics/" + folder + "is_valid.tif")
     _, VZA = open_tiff("pics/" + folder + "VZA.tif")
+    _, FVC_60 = open_tiff("pics/" + folder + "FVC.tif")
+    _, FVC_0 = open_tiff("pics/" + folder + "FVC_0.tif")
 
     # 上采样操作
     shape = LSTs.shape
@@ -1240,7 +1240,7 @@ def scatter_BTs_fvc(BT, fvc, k1, c1, k2, c2, band=12, edge=True, angle=0):
     plt.legend()
     plt.xlabel("FVC")
     plt.ylabel("Radiance")
-    # plt.ylim(260, 312)
+    plt.ylim(269, 320)
     # plt.ylim(np.min(BT) - 0.5, np.max(BT) + 0.5)
     plt.xlim(-0.28, 1)
     # plt.savefig("fvc_BTs_edges.png")
@@ -1263,7 +1263,7 @@ def display_LUT():
     plt.savefig("pics/LUT.png")
 
 
-def display_lines_0_60(BT_0, BT_60, FVC_0, FVC_60, band=12):
+def display_lines_0_60(BT_0, BT_60, FVC_0, FVC_60, band):
     """
     在同一特征空间内绘制0度与60数据的连线图
     :return:
@@ -1450,6 +1450,10 @@ def main_hdf(var=0.0, folder=""):
 
     # 计算FVC，G默认为0.5，并导出图像
     # 添加LAI误差
+    FVC_60 = cal_fvc_gap(LAI, CI, realVZA)
+    FVC_0 = cal_fvc_gap(LAI, CI, theta_0)
+    write_tiff(FVC_60, folder + "FVC_ori")
+    write_tiff(FVC_0, folder + "FVC_0_ori")
     if var != 0:
         noise = np.random.normal(0, var, LAI.shape)
         LAI_noise = noise + LAI
@@ -1458,10 +1462,9 @@ def main_hdf(var=0.0, folder=""):
         write_tiff(LAI_noise, folder + "LAI_noise")
         write_tiff(FVC_60_noise, folder + "FVC")
         write_tiff(FVC_0_noise, folder + "FVC_0")
-    FVC_60 = cal_fvc_gap(LAI, CI, realVZA)
-    FVC_0 = cal_fvc_gap(LAI, CI, theta_0)
-    write_tiff(FVC_60, folder + "FVC_ori")
-    write_tiff(FVC_0, folder + "FVC_0_ori")
+    else:
+        write_tiff(FVC_60, folder + "FVC")
+        write_tiff(FVC_0, folder + "FVC_0")
     print("done FVC calculation")
 
     # 进行ASTER的像元分类，计算组分温度与发射率
@@ -1615,7 +1618,7 @@ def main_hdf(var=0.0, folder=""):
     # </editor-fold>
 
 
-def add_noise(var=1, folder=""):
+def add_noise_CLST(var=1, folder=""):
     """
     给计算出的组分温度添加噪声
     :return:
@@ -1769,9 +1772,11 @@ def main_space(band=12, folder=""):
 
     # 不同波段从不同的位置开始搜索
     # 2327: -30, 2318: -80
-    if band == 10 or band == 11 or band == 12:
+    if band == 10 or band == 11:
         # baseDelta = 110
-        baseDelta = -170
+        baseDelta = -130
+    elif band == 12:
+        baseDelta = -100
     # 2327: -30, 2318: -50
     # elif band == 12:
     #     baseDelta = 140
@@ -1779,7 +1784,7 @@ def main_space(band=12, folder=""):
     #     baseDelta = 100
     else:
         # baseDelta = 100
-        baseDelta = -100
+        baseDelta = -90
 
     for x in range(500, 505):
         point_x = x / 10
@@ -1879,6 +1884,208 @@ def main_space(band=12, folder=""):
     write_tiff(LST_0, folder + "LST_0_final_" + str(band))
     write_tiff(LST_space_0, folder + "LST_space_0_final_" + str(band))
     # write_tiff(is_valid, "valid_final")
+    resultFile.close()
+
+
+def main_space_group(band, folder=""):
+    # <editor-fold> 读取数据，自动提取顶点
+
+    print("space construction for band " + str(band))
+    # 读取相关数据：某一波段的多角度辐亮度
+    ds_BT, BT = open_tiff("pics/" + folder + "BT_60_" + str(band) + ".tif")
+    ds_BT_0, BT_0 = open_tiff("pics/" + folder + "BT_0_" + str(band) + ".tif")
+    ds_fvc, fvc = open_tiff("pics/" + folder + "FVC_60_up.tif")
+    ds_fvc_0, fvc_0 = open_tiff("pics/" + folder + "FVC_0_up.tif")
+    ds_valid, is_valid = open_tiff("pics/" + folder + "is_valid_up.tif")
+    ds_VZA, VZA = open_tiff("pics/" + folder + "VZA_up.tif")
+    print(VZA.shape)
+    print(is_valid.shape)
+
+    # 更新is_valid数据
+    is_valid[BT <= 0] = 0
+    is_valid[fvc <= 0] = 0
+    is_valid[BT_0 <= 0] = 0
+    is_valid[fvc_0 <= 0] = 0
+
+    # 获取有效值（有效值转换为一维列表）
+    # 构建特征空间只使用有效值
+    BT_valid = BT[is_valid > 0]
+    BT_0_valid = BT_0[is_valid > 0]
+    fvc_valid = fvc[is_valid > 0]
+    fvc_0_valid = fvc_0[is_valid > 0]
+    VZA_valid = VZA[is_valid > 0]
+    # 辐亮度转为地表温度
+    LST = BTs2lst_real(BT, band, 60, folder)
+    LST_0 = BTs2lst_real(BT_0, band, 0, folder)
+    LST_valid = LST[is_valid > 0]
+    LST_0_valid = LST_0[is_valid > 0]
+
+    # </editor-fold>
+
+    # <editor-fold> 根据VZA进行分组，再各自构建空间
+    maxVZA = np.max(VZA_valid)
+    minVZA = np.min(VZA_valid)
+    len_VZA = int(maxVZA) - int(minVZA)
+    vertexes = []
+    for delta in range(int(len_VZA)+1):
+        # 当前VZA分组的各种数据
+        BT_valid_cur = BT_valid[VZA_valid <= (int(minVZA) + delta + 1)]
+        BT_0_valid_cur = BT_0_valid[VZA_valid <= (int(minVZA) + delta + 1)]
+        fvc_valid_cur = fvc_valid[VZA_valid <= (int(minVZA) + delta + 1)]
+        fvc_0_valid_cur = fvc_0_valid[VZA_valid <= (int(minVZA) + delta + 1)]
+        # 出图命名
+        band_cur = str(int(minVZA)+delta) + str(band)
+        # 子目录
+        folder_cur = folder + str(int(minVZA) + delta) +"/"
+
+        # 0-60图绘制
+        display_lines_0_60(BT_0_valid_cur, BT_valid_cur, fvc_0_valid_cur, fvc_valid_cur, band_cur)
+
+        # 垂直角度的特征空间
+        k1, c1, k2, c2 = getEdges_fvc(BT_0_valid_cur, fvc_0_valid_cur)
+        scatter_BTs_fvc(BT_0_valid_cur, fvc_0_valid_cur, k1, c1, k2, c2, band_cur, True, 0)
+
+        # 倾斜方向的特征空间
+        k1, c1, k2, c2 = getEdges_fvc(BT_valid_cur, fvc_valid_cur)
+        print(k1, c1, k2, c2)
+        # 出图
+        scatter_BTs_fvc(BT_valid_cur, fvc_valid_cur, k1, c1, k2, c2, band_cur, True, 60)
+        # 计算特征空间中的顶点
+        point_x, point_y = cal_vertex(k1, c1, k2, c2)
+        print(point_x, point_y)
+
+        # <editor-fold> 寻找最优顶点
+        best_x = 0
+        best_y = 0
+        best_RMSE = 5
+        preRMSE = 100
+        # 记录RMSE的文件
+        # file = open("pics/RMSEs_space" + str(band) + ".txt", 'w')
+        # file.write("fvc\tRadiance\tRMSE\n")
+
+        # 不同波段从不同的位置开始搜索
+        # 2327: -30, 2318: -80
+        if band == 10 or band == 11:
+            # baseDelta = 110
+            baseDelta = -130
+        elif band == 12:
+            baseDelta = -100
+        # 2327: -30, 2318: -50
+        # elif band == 12:
+        #     baseDelta = 140
+        # elif band == 13:
+        #     baseDelta = 100
+        else:
+            # baseDelta = 100
+            baseDelta = -90
+
+        for x in range(500, 505):
+            point_x = x / 10
+            print("x: " + str(x))
+            for y in [-x + delta for delta in range(baseDelta, 300)]:
+                # for y in [-x + delta for delta in range(70, 300)]:
+                if y % 10 == 0:
+                    print("y: " + str(y))
+                point_y = y / 10
+                BT_0_space = np.zeros(BT_0.shape, dtype=np.float64)
+                for i in range(BT_0.shape[0]):
+                    for j in range(BT_0.shape[1]):
+                        # FVC过大的点直接去除
+                        if fvc_0[i, j] > point_x or fvc[i, j] > point_x or is_valid[i, j] <= 0:
+                            continue
+                        k, c = cal_params(point_y, point_x, BT[i, j], fvc[i, j])
+                        BT_0_space[i, j] = k * fvc_0[i, j] + c
+                # 转换为地表温度，求地表温度的最小误差
+                cur_LST = BTs2lst_real(BT_0_space, band, 0, folder)
+                RMSE_LST_space_0 = np.sqrt(metrics.mean_squared_error(cur_LST[is_valid > 0], LST_0_valid))
+                # RMSE_BT_space_0 = np.sqrt(metrics.mean_squared_error(BT_0, BT_0_space))
+                # file.write("%f\t%f\t%f\n" % (point_x, point_y, RMSE_BT_space_0))
+                # 根据fvc_0与特征空间计算垂直方向辐亮度
+                if RMSE_LST_space_0 < best_RMSE:
+                    best_x = point_x
+                    best_y = point_y
+                    best_RMSE = RMSE_LST_space_0
+                # 如果RMSE大于上一个，则后面都是递增
+                if RMSE_LST_space_0 > preRMSE:
+                    preRMSE = 100
+                    break
+                else:
+                    preRMSE = RMSE_LST_space_0
+
+        # file.close()
+        # 输出结果至txt文件
+        resultFile = open("pics/" + folder_cur + "results_best.txt", "a")
+        resultFile.write("B" + str(band) + "\n")
+        resultFile.write("best x: " + str(best_x) + "\n")
+        resultFile.write("best y: " + str(best_y) + "\n")
+        resultFile.write("best RMSE: " + str(best_RMSE) + "\n")
+        resultFile.close()
+
+        vertexes.append(best_x)
+        vertexes.append(best_y)
+
+        # </editor-fold>
+
+    # </editor-fold>
+
+    print(vertexes)
+
+    # <editor-fold> 计算纠正后的Radiance
+    BT_0_space = np.zeros(is_valid.shape, dtype=np.float64)
+    for i in range(BT_0_space.shape[0]):
+        for j in range(BT_0_space.shape[1]):
+            # 无效值直接为0
+            if is_valid[i, j] == 0:
+                BT_0_space[i, j] = 0
+                continue
+            # 根据VZA大小选择顶点
+            point_x = vertexes[int(VZA[i, j] - minVZA) * 2]
+            point_y = vertexes[int(VZA[i, j] - minVZA) * 2 + 1]
+            # FVC过大的点直接去除
+            if fvc_0[i, j] > point_x or fvc[i, j] > point_x:
+                continue
+            k, c = cal_params(point_y, point_x, BT[i, j], fvc[i, j])
+            BT_0_space[i, j] = k * fvc_0[i, j] + c
+    # </editor-fold>
+
+    # <editor-fold> 结果定量分析
+    resultFile = open("pics/" + folder + "results_best.txt", "a")
+
+    BT_0_space_valid = BT_0_space[is_valid > 0]
+    # 计算结果与模拟结果进行对比
+    RMSE_BT_space_0 = np.sqrt(metrics.mean_squared_error(BT_0_valid, BT_0_space_valid))
+    display_hist(BT_0_space_valid - BT_0_valid, "Radiance_diff_space_0_" + str(band))
+    resultFile.write("RMSE_Radiance_space_0:\t" + str(RMSE_BT_space_0) + "\n")
+    # 原始数据与模拟结果的对比
+    display_hist(BT_0_valid - BT_valid, "Radiance_diff_0_" + str(band))
+    RMSE_BT_0 = np.sqrt(metrics.mean_squared_error(BT_valid, BT_0_valid))
+    resultFile.write("RMSE_Radiance_0:\t\t" + str(RMSE_BT_0) + "\n")
+
+    # 原始数据与特征空间结果的对比【不需要】
+    display_hist(BT_0_space_valid - BT_valid, "Radiance_diff_space_" + str(band))
+    RMSE_BT_space = np.sqrt(metrics.mean_squared_error(BT_valid, BT_0_space_valid))
+    resultFile.write("RMSE_Radiance_space:\t" + str(RMSE_BT_space) + "\n")
+
+    # 温度对比
+    LST_space_0 = BTs2lst_real(BT_0_space, band, 0, folder)
+    LST_space_0_valid = LST_space_0[is_valid > 0]
+
+    display_hist(LST_space_0_valid - LST_0_valid, "BT_diff_space_0_" + str(band))
+    RMSE_LST_space_0 = np.sqrt(metrics.mean_squared_error(LST_space_0_valid, LST_0_valid))
+    resultFile.write("RMSE_LST_space_0:\t" + str(RMSE_LST_space_0) + "\n")
+    display_hist(LST_0_valid - LST_valid, "BT_diff_0_" + str(band))
+    RMSE_LST_0 = np.sqrt(metrics.mean_squared_error(LST_0_valid, LST_valid))
+    resultFile.write("RMSE_LST_0:\t\t" + str(RMSE_LST_0) + "\n")
+    display_hist(LST_space_0_valid - LST_valid, "BT_diff_space_" + str(band))
+    RMSE_LST_space = np.sqrt(metrics.mean_squared_error(LST_space_0_valid, LST_valid))
+    resultFile.write("RMSE_LST_space:\t\t" + str(RMSE_LST_space) + "\n\n")
+    # </editor-fold>
+
+    # 出图
+    write_tiff(BT_0_space, folder + "Radiance_0_space_" + str(band))
+    write_tiff(LST, folder + "LST_final_" + str(band))
+    write_tiff(LST_0, folder + "LST_0_final_" + str(band))
+    write_tiff(LST_space_0, folder + "LST_space_0_final_" + str(band))
     resultFile.close()
 
 
@@ -2158,28 +2365,40 @@ def analyze_VZA():
     VZA.close()
 
 
-def main(var=0.0, folder=""):
-    # main_hdf(var, folder)
-    # up_sample(folder)
-    # add_noise(folder=folder)
+def sensitivity_LAI(var=0.0, folder=""):
+    main_hdf(var, folder)
+    up_sample(folder)
+    add_noise_CLST(folder=folder)
     for i in range(10, 15):
         main_calRadiance(i, folder)
         main_space(i, folder)
 
 
+def main_VZAgroup(folder=""):
+    """
+    利用模拟数据，对VZA进行分组实验
+    :param folder:
+    :return:
+    """
+    # main_hdf(folder=folder)
+    # up_sample(folder)
+    # add_noise_CLST(folder=folder)
+    for i in range(10, 15):
+        main_calRadiance(i, folder)
+        main_space_group(i, folder)
+    result_diff(folder)
+    addGeoinfo()
+    write_txt_VZA(folder)
+
+
 if __name__ == '__main__':
     # test()
     # get_mean_SE()
-    # display_BTsv_diff()
-    # analyze_VZA()
-    # sensitivity_overall()
-    # sensitivity_vertex(14)
 
     # 全流程
-    # main_hdf(0.5, "v3.12_2327/30_LAI05/")
+    # main_hdf(folder="v4.1_2327/30_LAI05/")
     # up_sample()
-    # add_noise(folder="v3.12_2327/30_LAI05/")
-    # add_noise_FVC(0.1)
+    # add_noise_CLST(folder="v4.1_2327/30_LAI05/")
     # for i in range(10, 15):
     #     main_calRadiance(i)
     #     main_space(i)
@@ -2187,8 +2406,17 @@ if __name__ == '__main__':
     # addGeoinfo()
     # write_txt_VZA()
 
+    main_VZAgroup("v4.1_2327/30/")
+
     # calRMSE_new("pics/BT_space_0_final_14.tif", "pics/BT_final_14.tif", "pics/VZA_up.tif", "14")
 
-    main(0.5, "v3.12_2327/30_LAI05/")
-    # main(1.5, "v3.12_2327/30_LAI15/")
-    # main(0.2, "v3.12_2327/30_LAI02/")
+    # LAI敏感性分析
+    # main(0.1, "v3.12_2309/55_LAI01/")
+    # main(0.2, "v3.12_2309/55_LAI02/")
+    # main(0.4, "v3.12_2327/30_LAI04/")
+    # main(0.5, "v3.12_2309/55_LAI05/")
+    # main(0.6, "v3.12_2327/30_LAI06/")
+    # main(0.8, "v3.12_2327/30_LAI08/")
+    # main(1.0, "v3.12_2309/55_LAI10/")
+    # main(1.2, "v3.12_2327/30_LAI12/")
+    # main(1.5, "v3.12_2309/55_LAI15/")
