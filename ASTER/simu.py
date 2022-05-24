@@ -144,15 +144,15 @@ def write_tiff(data: np.ndarray, filename: str):
     # misc.imsave(filename + ".tif", data)
 
 
-def write_txt_VZA():
+def write_txt_VZA(folder):
     """
     将有效VZA数据输出至txt文件
     :return:
     """
-    _, valid = open_tiff("pics/is_valid_up.tif")
-    _, VZA = open_tiff("pics/VZA_up.tif")
+    _, valid = open_tiff("pics/" + folder + "is_valid_up.tif")
+    _, VZA = open_tiff("pics/" + folder + "VZA_up.tif")
     VZA_valid = VZA[valid > 0]
-    with open("pics/VZA_up.txt", 'w') as file:
+    with open("pics/" + folder + "VZA_up.txt", 'w') as file:
         for x in VZA_valid:
             file.write(str(x) + "\n")
     return
@@ -170,13 +170,13 @@ def result_diff(folder=""):
     _, FVC0 = open_tiff("pics/" + folder + "FVC_0_up_ori.tif")
     _, FVC60 = open_tiff("pics/" + folder + "FVC_60_up_ori.tif")
     # 像元有效性
-    _, valid = open_tiff("pics/is_valid_up.tif")
+    _, valid = open_tiff("pics/" + folder + "is_valid_up.tif")
     diff_clst = LSTs - LSTv     # 组分温度差值
     diff_fvc = FVC60 - FVC0
 
     # 对应文件
-    file_clst = open("pics/diff_CLST.txt", 'w')
-    file_fvc = open("pics/diff_FVC.txt", 'w')
+    file_clst = open("pics/" + folder + "diff_CLST.txt", 'w')
+    file_fvc = open("pics/" + folder + "diff_FVC.txt", 'w')
 
     shape = diff_clst.shape
     for i in range(shape[0]):
@@ -191,17 +191,17 @@ def result_diff(folder=""):
     # 每个波段输出地表温度差值
     for band in range(10, 15):
         # 地表温度结果
-        _, LST_0_space = open_tiff("pics/LST_space_0_final_" + str(band) + ".tif")
-        _, LST_0 = open_tiff("pics/LST_0_final_" + str(band) + ".tif")
-        _, LST_60 = open_tiff("pics/LST_final_" + str(band) + ".tif")
+        _, LST_0_space = open_tiff("pics/" + folder + "LST_space_0_final_" + str(band) + ".tif")
+        _, LST_0 = open_tiff("pics/" + folder + "LST_0_final_" + str(band) + ".tif")
+        _, LST_60 = open_tiff("pics/" + folder + "LST_final_" + str(band) + ".tif")
 
         # 差值s
         diff = LST_0_space - LST_0    # 实际结果与理想结果差值
         diff_ori = LST_60 - LST_0     # 模拟/理想的纠正量
         diff_real = LST_0_space - LST_60  # 实际算法纠正量
-        file_diff = open("pics/diff_corr_simu_" + str(band) + ".txt", 'w')
-        file_ori = open("pics/diff_simu_diff_" + str(band) + ".txt", 'w')
-        file_real = open("pics/diff_corr_diff_" + str(band) + ".txt", 'w')
+        file_diff = open("pics/" + folder + "diff_corr_simu_" + str(band) + ".txt", 'w')
+        file_ori = open("pics/" + folder + "diff_simu_diff_" + str(band) + ".txt", 'w')
+        file_real = open("pics/" + folder + "diff_corr_diff_" + str(band) + ".txt", 'w')
         shape = diff.shape
         for i in range(shape[0]):
             for j in range(shape[1]):
@@ -1929,10 +1929,12 @@ def main_space_group(band, folder=""):
     vertexes = []
     for delta in range(int(len_VZA)+1):
         # 当前VZA分组的各种数据
-        BT_valid_cur = BT_valid[VZA_valid <= (int(minVZA) + delta + 1)]
-        BT_0_valid_cur = BT_0_valid[VZA_valid <= (int(minVZA) + delta + 1)]
-        fvc_valid_cur = fvc_valid[VZA_valid <= (int(minVZA) + delta + 1)]
-        fvc_0_valid_cur = fvc_0_valid[VZA_valid <= (int(minVZA) + delta + 1)]
+        curmin = int(minVZA) + delta    # 角度下限
+        curindexes = np.where((VZA_valid <= (curmin+1)) & (VZA_valid >= curmin))
+        BT_valid_cur = BT_valid[curindexes]
+        BT_0_valid_cur = BT_0_valid[curindexes]
+        fvc_valid_cur = fvc_valid[curindexes]
+        fvc_0_valid_cur = fvc_0_valid[curindexes]
         # 出图命名
         band_cur = str(int(minVZA)+delta) + str(band)
         # 子目录
@@ -1967,9 +1969,9 @@ def main_space_group(band, folder=""):
         # 2327: -30, 2318: -80
         if band == 10 or band == 11:
             # baseDelta = 110
-            baseDelta = -130
+            baseDelta = -110
         elif band == 12:
-            baseDelta = -100
+            baseDelta = -80
         # 2327: -30, 2318: -50
         # elif band == 12:
         #     baseDelta = 140
@@ -1977,7 +1979,7 @@ def main_space_group(band, folder=""):
         #     baseDelta = 100
         else:
             # baseDelta = 100
-            baseDelta = -90
+            baseDelta = -10
 
         for x in range(500, 505):
             point_x = x / 10
