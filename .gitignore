@@ -20,3 +20,5 @@ Application/pics/
 *.mxd
 pics/
 temp/
+*.zip
+Application/sentinel/

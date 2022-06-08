@@ -20,17 +20,17 @@ warnings.filterwarnings("ignore")   # 忽略warning
 # ****************************************** 一些声明 **************************************
 # ASTER
 # 2327
-file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032327_20211109202424_8804.hdf"
-file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032327_20211109044429_8561.hdf"
-file_SE_ASTER = "data/ASTER/AST_05_00307062019032327_20211109202540_19729.hdf"
+# file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032327_20211109202424_8804.hdf"
+# file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032327_20211109044429_8561.hdf"
+# file_SE_ASTER = "data/ASTER/AST_05_00307062019032327_20211109202540_19729.hdf"
 # 2318
 # file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032318_20211109202424_8809.hdf"
 # file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032318_20211109044429_8560.hdf"
 # file_SE_ASTER = "data/ASTER/AST_05_00307062019032318_20211109202540_19735.hdf"
 # 2309
-# file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032309_20211109202424_8812.hdf"
-# file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032309_20211109044449_8628.hdf"
-# file_SE_ASTER = "data/ASTER/AST_05_00307062019032309_20211109202540_19741.hdf"
+file_LST_ASTER_hdf = "data/ASTER/AST_08_00307062019032309_20211109202424_8812.hdf"
+file_refl_ASTER = "data/ASTER/AST_07XT_00307062019032309_20211109044449_8628.hdf"
+file_SE_ASTER = "data/ASTER/AST_05_00307062019032309_20211109202540_19741.hdf"
 
 # MOD09
 file_MOD09_1 = "data/MODIS/MOD09GA.sur_refl_b01_1.tif"
@@ -53,9 +53,9 @@ threshold_NDVI_min = 0.3
 # 2318
 # SEs_aver = [0.9556206,0.95971876,0.9583313,0.96373886,0.9579294,0.96535045,0.9737943,0.97538644,0.96828395,0.9703193]
 # 2309
-# SEs_aver = [0.95921916,0.96219736,0.96382433,0.96685,0.9655643,0.9693147,0.9739296,0.9761412,0.9667597,0.9716622]
+SEs_aver = [0.95921916,0.96219736,0.96382433,0.96685,0.9655643,0.9693147,0.9739296,0.9761412,0.9667597,0.9716622]
 # 2327
-SEs_aver = [0.95891243, 0.96218306, 0.9610082, 0.9646352, 0.961338, 0.96575534, 0.9749102, 0.975972, 0.9701367, 0.9715742]
+# SEs_aver = [0.95891243, 0.96218306, 0.9610082, 0.9646352, 0.961338, 0.96575534, 0.9749102, 0.975972, 0.9701367, 0.9715742]
 
 
 # ****************************************** 文件操作 **************************************
@@ -275,59 +275,6 @@ def cal_fvc_gap(LAI, omega, theta, G=0.5):
     :return:
     """
     return 1-np.exp(-LAI * omega * G / np.cos(theta*math.pi/180))
-
-
-# def cal_ref_BRDF(SZA, VZA, iso, vol, geo):
-#     """
-#     根据BRDF模型计算一个波段的反射率
-#     :param SZA:
-#     :param SAA:
-#     :param VZA:
-#     :param VAA:
-#     :param brdf_1:
-#     :param brdf_2:
-#     :param brdf_3:
-#     :return:
-#     """
-#     shape = SZA.shape
-#     result = [[] for i in range(shape[0])]
-#     result_vol = [[] for i in range(shape[0])]
-#     result_geo = [[] for i in range(shape[0])]
-#     for i in range(shape[0]):
-#         for j in range(shape[1]):
-#             # rAzimuth = (SAA[i, j] - VAA[i, j]) % 180
-#             rAzimuth = 0
-#             sza = 60 / 180 * math.pi
-#             # Kvol = Ross_thick(sza, VZA[i, j], rAzimuth)
-#             Kvol = Ross_thick(SZA[i, j] * math.pi / 180, VZA[i, j], rAzimuth)
-#             Kgeo = LI_SparseR(SZA[i, j] * math.pi / 180, VZA[i, j], rAzimuth)
-#             # Kgeo = LI_SparseR(sza, VZA[i, j], rAzimuth)
-#             result_vol[i].append(Kvol)
-#             result_geo[i].append(Kgeo)
-#             ref = iso[i, j] + vol[i, j] * Kvol + geo[i, j] * Kgeo
-#             result[i].append(ref)
-#
-#     result_vol = np.array(result_vol)
-#     result_geo = np.array(result_geo)
-#     result = np.array(result)
-#     # 特殊值处理
-#     result_vol[np.abs(result_vol) > 1000] = 0
-#     result_geo[np.abs(result_geo) > 1000] = 0
-#     iso[np.abs(iso) > 1000] = 0
-#     result[np.abs(result) > 1000] = 0
-#
-#     # print(np.min(result_vol))
-#     # print(np.min(result_geo))
-#     # print(np.min(iso))
-#     # print(np.max(result_vol))
-#     # print(np.max(result_geo))
-#     # print(np.max(iso))
-#     # display(result_vol, "VOL_4")
-#     # display(result_geo, "GEO_4")
-#     # display(np.array(iso), "ISO_2")
-#
-#     # display(result, "BRDF_band1_2")
-#     return np.array(result)
 
 
 def cal_index(base, interval, target):
@@ -724,16 +671,23 @@ def getEdges_fvc(BT: np.ndarray, fvc: np.ndarray):
     # Tmax_aver[0] = 9.6
     # Tmax_aver[-1] = 8.86
     # 2327
-    Tmax_aver[0] = 13.2
-    Tmax_aver[-1] = 11.2
+    # Tmax_aver[0] = 13.2
+    # Tmax_aver[-1] = 11.2
 
+    # print(Tmax_aver)
+    # print(Tmin_aver)
     # ndvi值（x轴）
     while True:
+        # 对无效数据进行处理
+        Tmax_aver = np.array(Tmax_aver)
+        ndvi_list = np.array(ndvi_list)
+        ndvi_list = ndvi_list[Tmax_aver > 0]
+        Tmax_aver = Tmax_aver[Tmax_aver > 0]
         # do linear regression
         k1, c1, r_value, p_value, std_err = stats.linregress(ndvi_list, np.array(Tmax_aver))
         y = k1 * ndvi_list + c1
         # calculate RMSE
-        RMSE = np.sqrt(metrics.mean_squared_error(np.array(Tmax_aver), y))
+        RMSE = np.sqrt(metrics.mean_squared_error(Tmax_aver, y))
         # do discard
         discard_max = False
         for i in range(len(ndvi_list)):
@@ -756,21 +710,22 @@ def getEdges_fvc(BT: np.ndarray, fvc: np.ndarray):
     # Tmin_aver[0] = 8.0
     # Tmin_aver[-1] = 7.36
     # 2327
-    Tmin_aver[0] = 7.9
-    Tmin_aver[-1] = 7
+    # Tmin_aver[0] = 7.9
+    # Tmin_aver[-1] = 7
 
     # ndvi值（x轴）
     while True:
+        # 对无效数据进行处理
+        Tmin_aver = np.array(Tmin_aver)
+        ndvi_list = np.array(ndvi_list)
+        ndvi_list = ndvi_list[Tmin_aver > 0]
+        Tmin_aver = Tmin_aver[Tmin_aver > 0]
         # do linear regression
-        # print(ndvi_list)
-        # print(Tmin_aver)
         k2, c2, r_value, p_value, std_err = stats.linregress(ndvi_list, np.array(Tmin_aver))
         print(k2, c2)
         y = k2 * ndvi_list + c2
         # calculate RMSE
-        # print(Tmin_aver)
-        # print(y)
-        RMSE = np.sqrt(metrics.mean_squared_error(np.array(Tmin_aver), y))
+        RMSE = np.sqrt(metrics.mean_squared_error(Tmin_aver, y))
         # do discard
         discard_min = False
         for i in range(len(ndvi_list)):
@@ -1109,6 +1064,31 @@ def BTs2lst_real(BTs, band=12, angle=0, folder=""):
         return None
 
 
+def BT2lst_valid(BTs, SE, band):
+    """
+
+    :param BTs:
+    :param SE:
+    :return:
+    """
+    fileName = "SRF/LUT" + str(band) + ".txt"
+    LUT = get_LUT(fileName)
+    # 辐亮度除以发射率，再进行到地表温度的转换
+    BTs = BTs / SE
+    shape = BTs.shape
+    lst = np.zeros(shape, dtype=np.float64)
+    # 一维数组
+    for i in range(shape[0]):
+        if BTs[i] <= 0:
+            lst[i] = 0
+            continue
+        # 找到最近的温度值对应的索引
+        index = np.searchsorted(np.array(LUT), BTs[i])
+        lst[i] = 270 + 0.001 * index
+    # 转回之前的shape
+    return lst
+
+
 def get_aster_lat_lon(sds):
     """
     获取一个ASTER数据集的所有像元坐标
@@ -1214,10 +1194,6 @@ def scatter_BTs_fvc(BT, fvc, k1, c1, k2, c2, band=12, edge=True, angle=0):
     :return:
     """
     # display the figure
-    # reshape to an one-dimension array
-    # sub_lst.reshape(-1)
-    # sub_ndvi.reshape(-1)
-
     # scatter
 
     fvc = fvc[BT > 0]
@@ -1240,7 +1216,6 @@ def scatter_BTs_fvc(BT, fvc, k1, c1, k2, c2, band=12, edge=True, angle=0):
     plt.legend()
     plt.xlabel("FVC")
     plt.ylabel("Radiance")
-    plt.ylim(269, 320)
     # plt.ylim(np.min(BT) - 0.5, np.max(BT) + 0.5)
     plt.xlim(-0.28, 1)
     # plt.savefig("fvc_BTs_edges.png")
@@ -1444,7 +1419,7 @@ def main_hdf(var=0.0, folder=""):
 
     # <editor-fold> 对每个MODIS像元：获取对应的CI值，计算fvc_60与fvc_0；计算其对应ASTER像元的组分发射率与温度，输出结果
     # 倾斜角度：中等角度28，大角度53
-    realVZA = generate_angles(LAI.shape, 28, folder)
+    realVZA = generate_angles(LAI.shape, 53, folder)
     # 0度
     theta_0 = 0
 
@@ -1774,9 +1749,9 @@ def main_space(band=12, folder=""):
     # 2327: -30, 2318: -80
     if band == 10 or band == 11:
         # baseDelta = 110
-        baseDelta = -130
+        baseDelta = -120
     elif band == 12:
-        baseDelta = -100
+        baseDelta = -80
     # 2327: -30, 2318: -50
     # elif band == 12:
     #     baseDelta = 140
@@ -1784,7 +1759,7 @@ def main_space(band=12, folder=""):
     #     baseDelta = 100
     else:
         # baseDelta = 100
-        baseDelta = -90
+        baseDelta = -40
 
     for x in range(500, 505):
         point_x = x / 10
@@ -1889,7 +1864,6 @@ def main_space(band=12, folder=""):
 
 def main_space_group(band, folder=""):
     # <editor-fold> 读取数据，自动提取顶点
-
     print("space construction for band " + str(band))
     # 读取相关数据：某一波段的多角度辐亮度
     ds_BT, BT = open_tiff("pics/" + folder + "BT_60_" + str(band) + ".tif")
@@ -1898,6 +1872,7 @@ def main_space_group(band, folder=""):
     ds_fvc_0, fvc_0 = open_tiff("pics/" + folder + "FVC_0_up.tif")
     ds_valid, is_valid = open_tiff("pics/" + folder + "is_valid_up.tif")
     ds_VZA, VZA = open_tiff("pics/" + folder + "VZA_up.tif")
+    _, SE = open_tiff("pics/" + folder + "SE_0_" + str(band) + ".tif")
     print(VZA.shape)
     print(is_valid.shape)
 
@@ -1914,6 +1889,7 @@ def main_space_group(band, folder=""):
     fvc_valid = fvc[is_valid > 0]
     fvc_0_valid = fvc_0[is_valid > 0]
     VZA_valid = VZA[is_valid > 0]
+    SE_valid = SE[is_valid > 0]
     # 辐亮度转为地表温度
     LST = BTs2lst_real(BT, band, 60, folder)
     LST_0 = BTs2lst_real(BT_0, band, 0, folder)
@@ -1926,19 +1902,54 @@ def main_space_group(band, folder=""):
     maxVZA = np.max(VZA_valid)
     minVZA = np.min(VZA_valid)
     len_VZA = int(maxVZA) - int(minVZA)
-    vertexes = []
+    print(maxVZA, minVZA, len_VZA)
+    indexes_all = []    # 记录各组数据的索引
+    # 先按照角度进行分组，1度1组
     for delta in range(int(len_VZA)+1):
-        # 当前VZA分组的各种数据
-        curmin = int(minVZA) + delta    # 角度下限
-        curindexes = np.where((VZA_valid <= (curmin+1)) & (VZA_valid >= curmin))
+        curmin = int(minVZA) + delta
+        indexes_all.append(np.where((VZA_valid <= (curmin+1)) & (VZA_valid >= curmin))[0])
+    print([len(temp) for temp in indexes_all])
+    # 对分组结果进行判断，点数少的进行合并
+    done = False
+    group_min = int(minVZA)
+    group_max = int(maxVZA)
+    while not done:
+        done = True
+        for i in range(len(indexes_all)):
+            if len(indexes_all[i]) < 200:
+                done = False
+                # 小角度，与后一个分组合并
+                if i == 0:
+                    newgroup = np.concatenate((np.array(indexes_all[0]), np.array(indexes_all[1])))
+                    indexes_all = indexes_all[1:]
+                    indexes_all[0] = tuple(newgroup)
+                    group_min += 1
+                    break
+                # 大角度，与前一个分组合并
+                elif i == len(indexes_all)-1:
+                    newgroup = np.concatenate((np.array(indexes_all[-1]), np.array(indexes_all[-2])))
+                    indexes_all = indexes_all[:-1]
+                    indexes_all[-1] = tuple(newgroup)
+                    group_max -= 1
+                    break
+
+    print(len(indexes_all))
+    print([len(temp) for temp in indexes_all])
+    # 对每个分组进行顶点提取
+    vertexes = []
+    for i in range(len(indexes_all)):
+        curindexes = indexes_all[i]
+        # 当前分组的数据
         BT_valid_cur = BT_valid[curindexes]
         BT_0_valid_cur = BT_0_valid[curindexes]
         fvc_valid_cur = fvc_valid[curindexes]
         fvc_0_valid_cur = fvc_0_valid[curindexes]
+        LST_0_calid_cur = LST_0_valid[curindexes]
+        SE_cur = SE_valid[curindexes]
         # 出图命名
-        band_cur = str(int(minVZA)+delta) + str(band)
+        band_cur = str(i) + "_" + str(band)
         # 子目录
-        folder_cur = folder + str(int(minVZA) + delta) +"/"
+        # folder_cur = folder + str(i) + "/"
 
         # 0-60图绘制
         display_lines_0_60(BT_0_valid_cur, BT_valid_cur, fvc_0_valid_cur, fvc_valid_cur, band_cur)
@@ -1966,20 +1977,16 @@ def main_space_group(band, folder=""):
         # file.write("fvc\tRadiance\tRMSE\n")
 
         # 不同波段从不同的位置开始搜索
-        # 2327: -30, 2318: -80
         if band == 10 or band == 11:
             # baseDelta = 110
-            baseDelta = -110
+            baseDelta = -240
         elif band == 12:
-            baseDelta = -80
-        # 2327: -30, 2318: -50
-        # elif band == 12:
-        #     baseDelta = 140
+            baseDelta = -200
         # elif band == 13:
         #     baseDelta = 100
         else:
             # baseDelta = 100
-            baseDelta = -10
+            baseDelta = -70
 
         for x in range(500, 505):
             point_x = x / 10
@@ -1989,19 +1996,15 @@ def main_space_group(band, folder=""):
                 if y % 10 == 0:
                     print("y: " + str(y))
                 point_y = y / 10
-                BT_0_space = np.zeros(BT_0.shape, dtype=np.float64)
-                for i in range(BT_0.shape[0]):
-                    for j in range(BT_0.shape[1]):
-                        # FVC过大的点直接去除
-                        if fvc_0[i, j] > point_x or fvc[i, j] > point_x or is_valid[i, j] <= 0:
-                            continue
-                        k, c = cal_params(point_y, point_x, BT[i, j], fvc[i, j])
-                        BT_0_space[i, j] = k * fvc_0[i, j] + c
+                BT_0_space = np.zeros(BT_0_valid_cur.shape, dtype=np.float64)
+                for curIndex in range(len(BT_0_valid_cur)):
+                    if fvc_0_valid_cur[curIndex] > point_x or fvc_valid_cur[curIndex] > point_x:
+                        continue
+                    k, c = cal_params(point_y, point_x, BT_valid_cur[curIndex], fvc_valid_cur[curIndex])
+                    BT_0_space[curIndex] = k * fvc_0_valid_cur[curIndex] + c
                 # 转换为地表温度，求地表温度的最小误差
-                cur_LST = BTs2lst_real(BT_0_space, band, 0, folder)
-                RMSE_LST_space_0 = np.sqrt(metrics.mean_squared_error(cur_LST[is_valid > 0], LST_0_valid))
-                # RMSE_BT_space_0 = np.sqrt(metrics.mean_squared_error(BT_0, BT_0_space))
-                # file.write("%f\t%f\t%f\n" % (point_x, point_y, RMSE_BT_space_0))
+                cur_LST = BT2lst_valid(BT_0_space, SE_cur, band)
+                RMSE_LST_space_0 = np.sqrt(metrics.mean_squared_error(cur_LST, LST_0_calid_cur))
                 # 根据fvc_0与特征空间计算垂直方向辐亮度
                 if RMSE_LST_space_0 < best_RMSE:
                     best_x = point_x
@@ -2016,7 +2019,7 @@ def main_space_group(band, folder=""):
 
         # file.close()
         # 输出结果至txt文件
-        resultFile = open("pics/" + folder_cur + "results_best.txt", "a")
+        resultFile = open("pics/" + folder + "results_best_" + str(i) + ".txt", "a")
         resultFile.write("B" + str(band) + "\n")
         resultFile.write("best x: " + str(best_x) + "\n")
         resultFile.write("best y: " + str(best_y) + "\n")
@@ -2041,8 +2044,15 @@ def main_space_group(band, folder=""):
                 BT_0_space[i, j] = 0
                 continue
             # 根据VZA大小选择顶点
-            point_x = vertexes[int(VZA[i, j] - minVZA) * 2]
-            point_y = vertexes[int(VZA[i, j] - minVZA) * 2 + 1]
+            if VZA[i, j] < (group_min + 1):
+                point_x = vertexes[0]
+                point_y = vertexes[1]
+            elif VZA[i, j] > (group_max):
+                point_x = vertexes[-2]
+                point_y = vertexes[-1]
+            else:
+                point_x = vertexes[int(VZA[i, j] - group_min) * 2]
+                point_y = vertexes[int(VZA[i, j] - group_min) * 2 + 1]
             # FVC过大的点直接去除
             if fvc_0[i, j] > point_x or fvc[i, j] > point_x:
                 continue
@@ -2382,14 +2392,14 @@ def main_VZAgroup(folder=""):
     :param folder:
     :return:
     """
-    # main_hdf(folder=folder)
-    # up_sample(folder)
-    # add_noise_CLST(folder=folder)
+    main_hdf(folder=folder)
+    up_sample(folder)
+    add_noise_CLST(folder=folder)
     for i in range(10, 15):
         main_calRadiance(i, folder)
         main_space_group(i, folder)
     result_diff(folder)
-    addGeoinfo()
+    # addGeoinfo()
     write_txt_VZA(folder)
 
 
@@ -2404,11 +2414,11 @@ if __name__ == '__main__':
     # for i in range(10, 15):
     #     main_calRadiance(i)
     #     main_space(i)
-    # result_diff()
+    result_diff()
     # addGeoinfo()
     # write_txt_VZA()
 
-    main_VZAgroup("v4.1_2327/30/")
+    main_VZAgroup("v4.1_2309/55/")
 
     # calRMSE_new("pics/BT_space_0_final_14.tif", "pics/BT_final_14.tif", "pics/VZA_up.tif", "14")
 
