@@ -99,7 +99,7 @@ def create_LUT(band):
         Ts_all = []
         file.write("Ts\tB(Ts)\n")
         for i in range(60000):
-            Ts = 270 + i * 0.001
+            Ts = 273 + i * 0.001
             BTs = cal_BTs(Ts, band)
             BTs_all.append(BTs)
             Ts_all.append(Ts)
@@ -130,12 +130,23 @@ def plot_L_wv():
     plt.show()
 
 
+def test():
+    with open("Plank_3lines.txt", 'w') as file:
+        for wv in range(6000, 15000):
+            file.write(str(wv / 1000) + "\t")
+            for Ts in [0, 25, 70]:
+                file.write(str(cal_Planck(Ts+273, wv * 1e-9)) + "\t")
+            file.write("\n")
+
+
+
 if __name__ == "__main__":
     # combine_channels()
     # 6.594058038074137
     # BTs = cal_BTs(310)
     # print(BTs)
-    plot_L_wv()
+    # plot_L_wv()
     # for i in range(10, 15):
     #     create_LUT(i)
     # plot_L_wv()
+    test()
