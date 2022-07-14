@@ -215,6 +215,24 @@ def result_diff(folder=""):
         file_real.close()
 
 
+def tiff2txt(filePath, txtName):
+    """
+    将一个tiff文件写为txt
+    :param filePath:
+    :return:
+    """
+    _, tiff = open_tiff(filePath)
+    _, valid = open_tiff("pics/is_valid_up.tif")
+    print(tiff.shape)
+    print(valid.shape)
+    with open("pics/" + txtName, 'w') as file:
+        for i in range(tiff.shape[0]):
+            for j in range(tiff.shape[1]):
+                if valid[i, j] != 0:
+                    file.write(str(tiff[i, j]) + "\n")
+    return
+
+
 # </editor-fold>
 
 # ****************************************** 计算函数 **************************************
@@ -1312,7 +1330,6 @@ def display_BTsv_diff():
     return
 
 
-
 # </editor-fold>
 
 # ****************************************** 综合 ******************************************
@@ -1320,7 +1337,7 @@ def display_BTsv_diff():
 # 适用于hdf格式的ASTER温度文件
 
 
-def main_hdf(var=0.0, folder=""):
+def main_hdf(var_LAI=0.0, var_CI=0.0, folder=""):
     """
     simulation experiment of angular normalization
     打开MODIS、ASTER、CI文件
@@ -1429,12 +1446,15 @@ def main_hdf(var=0.0, folder=""):
     FVC_0 = cal_fvc_gap(LAI, CI, theta_0)
     write_tiff(FVC_60, folder + "FVC_ori")
     write_tiff(FVC_0, folder + "FVC_0_ori")
-    if var != 0:
-        noise = np.random.normal(0, var, LAI.shape)
+    if var_LAI != 0 or var_CI != 0:
+        noise = np.random.normal(0, var_LAI, LAI.shape)
         LAI_noise = noise + LAI
-        FVC_60_noise = cal_fvc_gap(LAI_noise, CI, realVZA)
-        FVC_0_noise = cal_fvc_gap(LAI_noise, CI, theta_0)
+        noise = np.random.normal(0, var_CI, LAI.shape)
+        CI_noise = noise + CI
+        FVC_60_noise = cal_fvc_gap(LAI_noise, CI_noise, realVZA)
+        FVC_0_noise = cal_fvc_gap(LAI_noise, CI_noise, theta_0)
         write_tiff(LAI_noise, folder + "LAI_noise")
+        write_tiff(CI_noise, folder + "CI_noise")
         write_tiff(FVC_60_noise, folder + "FVC")
         write_tiff(FVC_0_noise, folder + "FVC_0")
     else:
@@ -1593,7 +1613,7 @@ def main_hdf(var=0.0, folder=""):
     # </editor-fold>
 
 
-def add_noise_CLST(var=1, folder=""):
+def add_noise_CLST(var=0.0, folder=""):
     """
     给计算出的组分温度添加噪声
     :return:
@@ -2378,12 +2398,25 @@ def analyze_VZA():
 
 
 def sensitivity_LAI(var=0.0, folder=""):
-    main_hdf(var, folder)
+    main_hdf(var_LAI=var, folder)
     up_sample(folder)
     add_noise_CLST(folder=folder)
     for i in range(10, 15):
         main_calRadiance(i, folder)
         main_space(i, folder)
+
+
+def sensitivity_CI(var=0.0, folder=""):
+    main_hdf(var_CI=var, folder)
+    up_sample(folder)
+    add_noise_CLST(folder=folder)
+    # 只跑14波段
+    # for i in range(10, 15):
+    #     main_calRadiance(i, folder)
+    #     main_space(i, folder)
+    main_calRadiance(14, folder)
+    main_space(14, folder)
+
 
 
 def main_VZAgroup(folder=""):
@@ -2408,21 +2441,21 @@ if __name__ == '__main__':
     # get_mean_SE()
 
     # 全流程
-    # main_hdf(folder="v4.1_2327/30_LAI05/")
+    main_hdf(folder="v4.1_2327/30_LAI05/")
     # up_sample()
     # add_noise_CLST(folder="v4.1_2327/30_LAI05/")
     # for i in range(10, 15):
     #     main_calRadiance(i)
     #     main_space(i)
-    result_diff()
+    # result_diff()
     # addGeoinfo()
     # write_txt_VZA()
 
-    main_VZAgroup("v4.1_2309/55/")
+    # main_VZAgroup("v4.1_2309/55/")
 
     # calRMSE_new("pics/BT_space_0_final_14.tif", "pics/BT_final_14.tif", "pics/VZA_up.tif", "14")
 
-    # LAI敏感性分析
+    # LAI敏感性分析: main -> sensitivity_LAI
     # main(0.1, "v3.12_2309/55_LAI01/")
     # main(0.2, "v3.12_2309/55_LAI02/")
     # main(0.4, "v3.12_2327/30_LAI04/")
@@ -2432,3 +2465,10 @@ if __name__ == '__main__':
     # main(1.0, "v3.12_2309/55_LAI10/")
     # main(1.2, "v3.12_2327/30_LAI12/")
     # main(1.5, "v3.12_2309/55_LAI15/")
+
+    # 导出NDVI的txt
+    # NDVIfile = "pics/NDVI_up.tif"
+    # tiff2txt(NDVIfile, "NDVI_2327.txt")
+
+    # CI敏感性分析
+    sensitivity_CI(0.1, "v3.12_2309/55_CI01")
