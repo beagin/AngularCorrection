@@ -6,9 +6,9 @@ from ASTER.simu import *
 
 # 文件路径
 # 河套平原
-# string_folder = "data/Hetao_2019/A2019187/"
+string_folder = "data/Hetao_2019/A2019187/"
 # 张掖
-string_folder = "data/Zhangye_2019/A2019222/"
+# string_folder = "data/Zhangye_2019/A2019222/"
 
 File_LST = string_folder + "LST.tif"
 File_VZA = string_folder + "VZA.tif"
@@ -344,6 +344,33 @@ def exportGeo(index):
     del ds_LST0
 
 
+def exportGeo_VZA(index):
+    """
+    给两个LST文件添加地理信息
+    :param index: 0为河套，1为张掖
+    :return:
+    """
+    _, LST = open_tiff("pics/VZA_subset.tif")
+    # 用于参考的LAI数据
+    ds_LAI, LAI = open_tiff(File_LAI)
+    proj = ds_LAI.GetProjection()
+    # 写新的文件
+    driver = gdal.GetDriverByName("GTiff")
+    ds_LST = driver.Create("pics/VZA_geo.tif", LST.shape[1], LST.shape[0], 1, gdal.GDT_Float32)
+    # 添加坐标信息
+    # Zhangye 2019 222
+    if index == 1:
+        geoTrans = (99.23072662353515, 0.01, 0.0, 39.31099319458008, 0.0, -0.01)
+    # Hetao 2019 187
+    elif index == 0:
+        geoTrans = (105.74903767581467, 0.01, 0.0, 41.79, 0.0, -0.01)
+    # 赋值
+    ds_LST.SetProjection(proj)
+    ds_LST.SetGeoTransform(geoTrans)
+    ds_LST.GetRasterBand(1).WriteArray(LST)
+    del ds_LST
+
+
 def process_all(region=0):
     """
     应用至真实MODIS数据的整个流程
@@ -516,11 +543,52 @@ def test():
     print(geotrans_LAI)
 
 
+def calRMSE():
+    _, LST = open_tiff("pics/LST_subset.tif")
+    _, LST_0 = open_tiff("pics/LST_0.tif")
+    _, valid = open_tiff("pics/is_valid.tif")
+    LST_valid = LST[valid > 0]
+    LST_0_valid = LST_0[valid > 0]
+    RMSE_LST = np.sqrt(metrics.mean_squared_error(LST_0_valid, LST_valid))
+    print(RMSE_LST)
+
+
+def exportNDVI():
+    # _, valid = open_tiff("pics/is_valid.tif")
+    _, NDVI = open_tiff("pics/NDVI_subset1.tif")
+    _, LSTdiff = open_tiff("pics/LST_diff.tif")
+    print(NDVI.shape)
+    NDVI = NDVI[:, :-1]
+    print(NDVI.shape)
+    # NDVI_valid = NDVI[valid > 0]
+    fileNDVI = open("pics/NDVI.txt", 'w')
+    filediff = open("pics/LSTdiff.txt", 'w')
+    fileresult = open("pics/NDVIresult.txt", 'w')
+    lists = [[] for x in range(10)]
+    for i in range(NDVI.shape[0]):
+        for j in range(NDVI.shape[1]):
+            if abs(LSTdiff[i, j]) > 10:
+                continue
+            index = int(NDVI[i, j] * 10)
+            fileNDVI.write(str(index/10) + "\n")
+            filediff.write(str(LSTdiff[i, j]) + "\n")
+            lists[index].append(LSTdiff[i, j])
+    mean = [np.mean(x) for x in lists]
+    print(mean)
+
+    fileNDVI.close()
+    filediff.close()
+    fileresult.close()
+
+
 if __name__ == '__main__':
     # hdf_reproj()
     # process_all(1)
     # create_LUT()
     # process_space()
     # export()
-    exportGeo(1)
+    # exportGeo(1)
     # test()
+    # calRMSE()
+    # exportGeo_VZA(0)
+    exportNDVI()
